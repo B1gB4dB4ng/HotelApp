@@ -1,7 +1,6 @@
-fastapi==0.115.11
-pydantic==2.10.6
-starlette==0.46.1
-uvicorn==0.34.0
-anyio==4.8.0
-h11==0.14.0
-idna==3.10
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-multipart
+aiofiles

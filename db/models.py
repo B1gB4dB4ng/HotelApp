@@ -1,6 +1,5 @@
 from db.database import Base
-from sqlalchemy import DECIMAL, Column, ForeignKey, Integer, String, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy import DECIMAL, Column, Integer, String, Boolean
 
 
 class Dbuser(Base):
@@ -17,7 +16,6 @@ class Dbuser(Base):
     )
     hashed_password = Column(String)
     is_superuser = Column(Boolean, default=False)
-    hotels = relationship("Dbhotel", back_populates="owner")
 
 
 class Dbhotel(Base):
@@ -25,9 +23,8 @@ class Dbhotel(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(String, nullable=True)
-    owner_id = Column(Integer, ForeignKey("user.id"), index=True)
+    owner_username = Column(String, nullable=False)  # This is the new column
     img_link = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     price = Column(DECIMAL(8, 2), nullable=False)
     location = Column(String, nullable=False)
-    owner = relationship("Dbuser", back_populates="hotels")

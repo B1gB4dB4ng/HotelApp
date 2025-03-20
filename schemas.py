@@ -29,13 +29,6 @@ class HotelBase(BaseModel):
 
 class HotelDisplay(HotelBase):
     id: int
-    title: str
-    description: Optional[str] = None
-    img_link: Optional[str] = None
-    price: Decimal
-    location: str
-    is_active: bool
-    owner_username: str
 
     class Config:
         orm_mode = True

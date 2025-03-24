@@ -1,5 +1,6 @@
 # Virtual environment folder
 venv/
+fastapi-env/
   
 # Python cache files
 __pycache__/
@@ -27,3 +28,4 @@ Thumbs.db  # Windows
 *.bak
 *.swp
 *.db
+*.env

@@ -3,7 +3,6 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-
 class UserBase(BaseModel):
     username: str
     email: str
@@ -15,7 +14,8 @@ class UserDisplay(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class HotelBase(BaseModel):
     name: str
@@ -33,7 +33,7 @@ class HotelDisplay(BaseModel):
     price: Decimal
     img_link: Optional[str]
     is_approved: bool
-    #user_id: int  # Optional to return who owns it
+    # user_id: int  # Optional to return who owns it
 
     class Config:
-        orm_mode = True
+        from_attributes = True

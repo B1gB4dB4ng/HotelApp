@@ -14,7 +14,7 @@ class UserDisplay(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class HotelBase(BaseModel):
@@ -31,4 +31,4 @@ class HotelDisplay(HotelBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True

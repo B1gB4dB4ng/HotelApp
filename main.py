@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import user
+from routers import hotel, user
 from db import models
 from db.database import engine
 
@@ -13,3 +13,5 @@ def read_root():
 
 
 models.Base.metadata.create_all(engine)
+# Register routes
+app.include_router(hotel.router)

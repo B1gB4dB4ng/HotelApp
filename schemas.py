@@ -17,16 +17,6 @@ class UserDisplay(BaseModel):
     class Config:
         orm_mode = True
 
-
-# class HotelBase(BaseModel):
-#     title: str
-#     description: Optional[str] = None
-#     img_link: Optional[str] = None
-#     price: Decimal
-#     location: str
-#     is_active: bool = True
-#     owner_username: str
-
 class HotelBase(BaseModel):
     name: str
     location: str

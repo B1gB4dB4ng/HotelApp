@@ -1,7 +1,7 @@
 # Virtual environment folders
 venv/
 fastapi-env/
-
+  
 # Python cache files
 __pycache__/
 *.pyc

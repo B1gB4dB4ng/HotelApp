@@ -14,21 +14,26 @@ class UserDisplay(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class HotelBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    img_link: Optional[str] = None
-    price: Decimal
+    name: str
     location: str
-    is_active: bool = True
-    owner_username: str
+    description: Optional[str]
+    price: Decimal
+    img_link: Optional[str]
 
 
-class HotelDisplay(HotelBase):
+class HotelDisplay(BaseModel):
     id: int
+    name: str
+    location: str
+    description: Optional[str]
+    price: Decimal
+    img_link: Optional[str]
+    is_approved: bool
+    # user_id: int  # Optional to return who owns it
 
     class Config:
-        orm_mode = True
+        from_attributes = True

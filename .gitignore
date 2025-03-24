@@ -1,5 +1,6 @@
 # Virtual environment folder
 venv/
+fastapi-env/
   
 # Python cache files
 __pycache__/

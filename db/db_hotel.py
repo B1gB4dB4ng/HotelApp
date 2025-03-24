@@ -1,5 +1,7 @@
-from db.models import Dbhotel
 from sqlalchemy.orm.session import Session
+from schemas import HotelBase
+from db.models import Dbhotel
+
 
 from schemas import HotelBase
 
@@ -19,3 +21,10 @@ def create_hotel(db: Session, request: HotelBase):
     db.refresh(new_hotel)
 
     return new_hotel
+
+#delete hotel
+def delete_hotel(db: Session, id: int):
+    hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
+    db.delete(hotel)
+    db.commit()
+    return "ok"

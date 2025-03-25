@@ -14,3 +14,4 @@ def read_root():
 models.Base.metadata.create_all(engine)
 #Register routes
 app.include_router(hotel.router)
+

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel
 
 
@@ -20,6 +20,8 @@ class UserDisplay(BaseModel):
 class HotelBase(BaseModel):
     name: str
     location: str
+    is_activate:Literal["inactive", "active", "deleted"]="active"
+    is_approved:bool=False
     description: Optional[str]
     price: Decimal
     img_link: Optional[str]

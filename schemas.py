@@ -17,6 +17,11 @@ class UserDisplay(BaseModel):
         from_attributes = True
 
 
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
 class HotelBase(BaseModel):
     name: str
     location: str

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -25,6 +25,8 @@ class TokenResponse(BaseModel):
 class HotelBase(BaseModel):
     name: str
     location: str
+    is_activate: Literal["inactive", "active", "deleted"] = "active"
+    is_approved: bool = False
     description: Optional[str]
     price: Decimal
     img_link: Optional[str]

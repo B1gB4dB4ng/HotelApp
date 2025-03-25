@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 from db.models import Dbhotel
 from schemas import HotelBase
+# In db_hotel.py - add this at the top
+from decimal import Decimal
+from typing import Optional
 
 def create_hotel(db: Session, request: HotelBase):
     new_hotel = Dbhotel(
@@ -16,9 +19,57 @@ def create_hotel(db: Session, request: HotelBase):
     db.refresh(new_hotel)
     return new_hotel
 
-#delete hotel
+### delete hotel
 def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
     db.delete(hotel)
     db.commit()
     return "ok"
+
+
+# Add these to db_hotel.py
+from sqlalchemy import or_, and_
+
+def search_hotels(db: Session, search_term: str = None):
+    query = db.query(Dbhotel)  # Removed: .filter(Dbhotel.is_approved == True)
+    if search_term:
+        search_pattern = f"%{search_term}%"
+        query = query.filter(
+            or_(
+                Dbhotel.name.ilike(search_pattern),
+                Dbhotel.location.ilike(search_pattern),
+                Dbhotel.description.ilike(search_pattern),
+            )
+        )
+    return query.all()
+
+
+def filter_hotels(
+    db: Session,
+    min_price: Decimal = None,
+    max_price: Decimal = None,
+    location: str = None
+):
+    print(f"\n⚡ Filter Params Received - min: {min_price}, max: {max_price}, loc: {location}")
+    
+    query = db.query(Dbhotel)
+    
+    # Price filters
+    if min_price is not None:
+        print(f"Applying min_price filter: {min_price}")
+        query = query.filter(Dbhotel.price >= min_price)
+    if max_price is not None:
+        print(f"Applying max_price filter: {max_price}")
+        query = query.filter(Dbhotel.price <= max_price)
+    
+    # Location filter
+    if location:
+        print(f"Applying location filter: {location}")
+        query = query.filter(Dbhotel.location.ilike(f"%{location}%"))
+    
+    results = query.all()
+    print(f"Found {len(results)} hotels")
+    for hotel in results:
+        print(f"  - {hotel.name} (${hotel.price}, {hotel.location})")
+    
+    return results

@@ -44,3 +44,10 @@ class HotelDisplay(BaseModel):
 
     class Config:
         from_attributes = True
+
+#######
+class HotelSearch(BaseModel):
+    search_term: Optional[str] = None
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    location: Optional[str] = None

@@ -18,7 +18,7 @@ def submit_hotel(request: HotelBase, db: Session = Depends(get_db)):
     return db_hotel.create_hotel(db, request)
 
 
-# raed one hotel
+# read one hotel
 @router.get("/{id}", response_model=HotelDisplay)
 def get_hotel(id: int, db: Session = Depends(get_db)):
     return db_hotel.get_hotel(db, id)
@@ -35,29 +35,21 @@ def get_hotels(
     location: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
-    # Convert to Decimal only if values exist
+    # Convert to Decimal (if values exist)
     min_dec = Decimal(str(min_price)) if min_price is not None else None
     max_dec = Decimal(str(max_price)) if max_price is not None else None
 
-    # Search first if a search term is provided
-    hotels = (
-        db_hotel.search_hotels(db, search_term)
-        if search_term
-        else db_hotel.get_all_hotels(db)
+    # Use the COMBINED function (from db_hotel.py)
+    return db_hotel.combined_search_filter(
+        db,
+        search_term=search_term,
+        min_price=min_dec,
+        max_price=max_dec,
+        location=location.strip() if location else None,
+        skip=0,  # Hardcode or make optional
+        limit=100  # Default limit
     )
 
-    # Apply filtering if necessary
-    if min_price is not None or max_price is not None or location:
-        # Filter hotels based on the passed query parameters
-        filtered_hotels = db_hotel.filter_hotels(
-            db,
-            min_price=min_dec,
-            max_price=max_dec,
-            location=location.strip() if location else None,
-        )
-        return filtered_hotels
-
-    return hotels
 
 
 # update hotels
@@ -67,7 +59,7 @@ def update_hotel(id: int, request: HotelBase, db: Session = Depends(get_db)):
 
 
 # Delete Hotel
-@router.get(
+@router.delete(
     "/{id}/delete",
     tags=["Hotel"],
     summary="Remove hotel",

@@ -32,7 +32,7 @@ class Dbhotel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # ForeignKey to DbUser
-    owner_id = Column(Integer, ForeignKey("user.id"))  
+    owner_id = Column(Integer, ForeignKey("user.id"))
     # Many-to-one: Many hotels belong to one user
     owner = relationship("Dbuser", back_populates="hotels")
     #

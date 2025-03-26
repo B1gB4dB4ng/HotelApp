@@ -21,7 +21,7 @@ class UserDisplay(BaseModel):
 class HotelBase(BaseModel):
     name: str
     location: str
-    is_activate:Literal["inactive", "active", "deleted"]="active"
+    is_active:Literal["inactive", "active", "deleted"]="active"
     is_approved:bool=False
     description: Optional[str]
     price: Decimal
@@ -47,9 +47,6 @@ class HotelSearch(BaseModel):
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
     location: Optional[str] = None
-
-from datetime import date
-from pydantic import BaseModel
 
 class BookingBase(BaseModel):
     hotel_id: int

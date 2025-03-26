@@ -91,7 +91,7 @@ def update_hotel(db: Session, id: int, request: HotelBase):
             Dbhotel.name: request.name,
             Dbhotel.description: request.description,
             Dbhotel.img_link: request.img_link,
-            Dbhotel.is_active: request.is_activate,
+            Dbhotel.is_active: request.is_active,
             Dbhotel.is_approved: request.is_approved,
             Dbhotel.location: request.location,
             Dbhotel.price: request.price,
@@ -99,3 +99,11 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     )
     db.commit()
     return "ok"
+
+
+@router.get("/{id}", response_model=HotelDisplay)
+def get_hotel(id: int, db: Session = Depends(get_db)):
+    hotel = db_hotel.get_hotel(db, id)  # calls your db function
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+    return hotel

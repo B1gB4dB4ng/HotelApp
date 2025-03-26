@@ -9,7 +9,9 @@ class Dbuser(Base):
     __tablename__ = "user"
     id = Column(Integer, primary_key=True, index=True)
     # One-to-many: One user has many hotels
-    hotels = relationship("DbHotel", back_populates="owner")
+    hotels = relationship("Dbhotel", back_populates="owner")
+    # One-to-many: one user has many booking
+    bookings = relationship("Dbbooking", back_populates="user")
     username = Column(String,unique=True)
     email = Column(String,unique=True)
     hashed_password = Column(String)
@@ -20,9 +22,9 @@ class Dbuser(Base):
 
 
 class IsActive(PyEnum):  # Define Enum for strict values
-    INACTIVE = "inactive"
-    ACTIVE = "active"
-    DELETED = "deleted"
+    inactive = "inactive"
+    active = "active"
+    deleted = "deleted"
 
 
 class Dbhotel(Base):
@@ -32,14 +34,15 @@ class Dbhotel(Base):
     # ForeignKey to DbUser
     owner_id = Column(Integer, ForeignKey("user.id"))  
     # Many-to-one: Many hotels belong to one user
-    owner = relationship("DbUser", back_populates="hotels")
+    owner = relationship("Dbuser", back_populates="hotels")
+    #
+    bookings = relationship("Dbbooking", back_populates="hotel")
     name = Column(String, index=True)
     location = Column(String, nullable=False)
     description = Column(String, nullable=True)
     price = Column(DECIMAL(8, 2), nullable=False)
     is_active = Column(
-        Enum(IsActive), nullable=False, default=IsActive.ACTIVE
-    )  # Enforced Enum
+        Enum(IsActive), nullable=False, default=IsActive.active)  # Enforced Enum
     img_link = Column(String, nullable=True)
     is_approved = Column(Boolean, default=False)
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Optional, Literal
 from pydantic import BaseModel
+
 
 
 class UserBase(BaseModel):
@@ -14,8 +15,7 @@ class UserDisplay(BaseModel):
     email: str
 
     class Config:
-        from_attributes = True
-
+        orm_mode = True
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -25,8 +25,8 @@ class TokenResponse(BaseModel):
 class HotelBase(BaseModel):
     name: str
     location: str
-    is_activate: Literal["inactive", "active", "deleted"] = "active"
-    is_approved: bool = False
+    is_activate:Literal["inactive", "active", "deleted"]="active"
+    is_approved:bool=False
     description: Optional[str]
     price: Decimal
     img_link: Optional[str]
@@ -40,7 +40,7 @@ class HotelDisplay(BaseModel):
     price: Decimal
     img_link: Optional[str]
     is_approved: bool
-    # user_id: int  # Optional to return who owns it
+    #user_id: int  # Optional to return who owns it
 
     class Config:
         from_attributes = True

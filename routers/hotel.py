@@ -59,7 +59,7 @@ def update_hotel(id: int, request: HotelBase, db: Session = Depends(get_db)):
 
 
 # Delete Hotel
-@router.get(
+@router.delete(
     "/{id}/delete",
     tags=["Hotel"],
     summary="Remove hotel",

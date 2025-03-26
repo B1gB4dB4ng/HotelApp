@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
-from db.models import Dbhotel
+from db.models import Dbhotel, IsActive
 from schemas import HotelBase
 from sqlalchemy import or_, and_
 from decimal import Decimal
 from typing import Optional
+from fastapi import HTTPException, status
 
 
 def create_hotel(db: Session, request: HotelBase):
@@ -24,7 +25,10 @@ def create_hotel(db: Session, request: HotelBase):
 # delete hotel
 def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
-    db.delete(hotel)
+    if not hotel:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Hotel with {id} not found")
+    hotel.is_active = IsActive.DELETED
     db.commit()
     return "ok"
 

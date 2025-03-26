@@ -57,9 +57,6 @@ def delete_a_booking(booking_id: int, db: Session = Depends(get_db)):
     return {"detail": "Booking deleted successfully"}
 
 
-@router.get("/user/{user_id}", response_model=List[BookingShow])
-def get_user_bookings(user_id: int, db: Session = Depends(get_db)):
-    bookings = db_booking.get_bookings_for_user(db, user_id)
-    return bookings
+
 
 

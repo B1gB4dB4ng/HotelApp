@@ -58,5 +58,6 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
         )
 
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(user=db_user)
+
     return {"access_token": access_token, "token_type": "bearer"}

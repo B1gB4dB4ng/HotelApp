@@ -6,8 +6,9 @@ from jose import JWTError, jwt
 from dotenv import load_dotenv
 import os
 
-from database import get_db  # Import DB session
-from models import Dbuser  # Import User model
+from db.database import get_db
+from db.models import Dbuser
+
 
 load_dotenv()
 
@@ -20,7 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login")
 
 def create_access_token(user: Dbuser, expires_delta: timedelta | None = None):
     """Creates JWT token with user ID"""
-    to_encode = {"sub": str(user.id)}  # Storing user ID in token
+    to_encode = {"sub": str(user.id)}  # Make sure user is a Dbuser object
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
 

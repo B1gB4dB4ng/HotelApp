@@ -9,9 +9,9 @@ class Dbuser(Base):
     __tablename__ = "user"
     id = Column(Integer, primary_key=True, index=True)
     # One-to-many: One user has many hotels
-    hotels = relationship("DbHotel", back_populates="owner")
-    username = Column(String,unique=True)
-    email = Column(String,unique=True)
+    hotels = relationship("Dbhotel", back_populates="owner")
+    username = Column(String, unique=True)
+    email = Column(String, unique=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean, default=False)
 
@@ -30,9 +30,9 @@ class Dbhotel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # ForeignKey to DbUser
-    owner_id = Column(Integer, ForeignKey("user.id"))  
+    owner_id = Column(Integer, ForeignKey("user.id"))
     # Many-to-one: Many hotels belong to one user
-    owner = relationship("DbUser", back_populates="hotels")
+    owner = relationship("Dbuser", back_populates="hotels")
     name = Column(String, index=True)
     location = Column(String, nullable=False)
     description = Column(String, nullable=True)

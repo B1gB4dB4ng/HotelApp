@@ -81,7 +81,7 @@ def update_hotel(db: Session, id: int, request: HotelBase):
             Dbhotel.name: request.name,
             Dbhotel.description: request.description,
             Dbhotel.img_link: request.img_link,
-            Dbhotel.is_active: request.is_activate,
+            Dbhotel.is_active: request.is_active,
             Dbhotel.is_approved: request.is_approved,
             Dbhotel.location: request.location,
             Dbhotel.price: request.price,
@@ -89,3 +89,4 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     )
     db.commit()
     return "ok"
+

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import hotel, user
+from routers import hotel, user, booking
 from db import models
 from db.database import engine
 
@@ -13,5 +13,7 @@ def read_root():
 
 
 app.include_router(hotel.router)
+
+app.include_router(booking.router)  
 
 models.Base.metadata.create_all(engine)

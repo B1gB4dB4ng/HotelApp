@@ -38,4 +38,11 @@ class HotelDisplay(BaseModel):
     #user_id: int  # Optional to return who owns it
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+#######
+class HotelSearch(BaseModel):
+    search_term: Optional[str] = None
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    location: Optional[str] = None

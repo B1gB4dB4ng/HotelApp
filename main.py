@@ -9,7 +9,7 @@ app.include_router(user.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Hotel Booking API!!!"}
+    return {"message": "Welcome to the Hotel Booking API!!!!"}
 
 
 app.include_router(hotel.router)

@@ -1,33 +1,32 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_hotel
+from db.models import Dbuser
 from schemas import HotelBase, HotelDisplay
 from schemas import HotelSearch
 from decimal import Decimal
 from typing import Optional, List
-from auth.oauth2 import oauth2_scheme
+from auth.oauth2 import get_current_user
 
 
 router = APIRouter(prefix="/hotel", tags=["Hotel"])
-
-# You should use delete decorator instead of get
-# In common practice ,it is better actually not delete it from DB but update(patch) or using post to update items as inactive etc
-
 
 
 @router.post("/submit", response_model=HotelDisplay)
 def submit_hotel(
     request: HotelBase,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
 ):
-    # For now we'll fake the user ID (you'll replace with real one later)
-    # user_id = 1
-    return db_hotel.create_hotel(db, request)
+    """
+    Only authenticated users can create hotels.
+    The owner ID is automatically assigned from the logged-in user.
+    """
+    return db_hotel.create_hotel(db, request, owner_id=user.id)  # Assign owner_id
 
 
-# raed one hotel
+# read one hotel
 @router.get("/{id}", response_model=HotelDisplay)
 def get_hotel(id: int, db: Session = Depends(get_db)):
     return db_hotel.get_hotel(db, id)
@@ -71,16 +70,47 @@ def get_hotels(
 
 # update hotels
 @router.post("/{id}/update")
-def update_hotel(id: int, request: HotelBase, db: Session = Depends(get_db)):
+def update_hotel(
+    id: int,
+    request: HotelBase,
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),
+):
+    hotel = db_hotel.get_hotel(db, id)
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    if hotel.owner_id != user.id and not user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to update this hotel"
+        )
+
     return db_hotel.update_hotel(db, id, request)
 
 
-# Delete Hotel
-@router.get(
+### DELETE HOTEL (Only Owner or Super Admin)
+@router.delete(
     "/{id}/delete",
     tags=["Hotel"],
     summary="Remove hotel",
-    description="This API call removes hotel from db",
+    description="Only owner or super admin can delete",
 )
-def delete(id: int, db: Session = Depends(get_db)):
+def delete_hotel(
+    id: int,
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
+):
+    """
+    Only the owner or a super admin can delete a hotel.
+    """
+    hotel = db_hotel.get_hotel(db, id)
+
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    if hotel.owner_id != user.id and not user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this hotel"
+        )
+
     return db_hotel.delete_hotel(db, id)

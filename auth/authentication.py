@@ -22,11 +22,11 @@ def get_token(
     )
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Credentials"
         )
     if not Hash.verify(user.hashed_password, request.password):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid password"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
         )
 
     access_token = oauth2.create_access_token(data={"sub": user.username})

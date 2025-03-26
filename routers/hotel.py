@@ -9,9 +9,9 @@ router = APIRouter(prefix="/hotel", tags=["Hotel"])
 
 
 # Delete Hotel
-@router.get(
+@router.delete(
     "/{id}/delete",
-    tags=["hotel"],
+    tags=["Hotel"],
     summary="Remove hotel",
     description="This API call removes hotel from db",
 )

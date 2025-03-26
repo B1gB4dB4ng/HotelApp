@@ -1,5 +1,5 @@
 from db.database import Base
-from sqlalchemy import DECIMAL, Column, Enum, Integer, String, Boolean, ForeignKey
+from sqlalchemy import DECIMAL, Column, Enum, Integer, String, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 
@@ -46,3 +46,18 @@ class Dbhotel(Base):
     )  # Enforced Enum
     img_link = Column(String, nullable=True)
     is_approved = Column(Boolean, default=False)
+
+# ========== BOOKING MODEL ==========
+
+class Dbbooking(Base):
+    __tablename__ = "booking"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user.id"))
+    hotel_id = Column(Integer, ForeignKey("hotel.id"))
+    check_in_date = Column(Date, nullable=False)
+    check_out_date = Column(Date, nullable=False)
+
+    # Relationships back to user and hotel
+    user = relationship("Dbuser", back_populates="bookings")
+    hotel = relationship("Dbhotel", back_populates="bookings")

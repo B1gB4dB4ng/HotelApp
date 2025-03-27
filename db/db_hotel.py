@@ -26,9 +26,8 @@ def create_hotel(db: Session, request: HotelBase, owner_id: int):
 def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
     if not hotel:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Hotel with {id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Hotel with {id} not found")
     hotel.is_active = IsActive.deleted
     db.commit()
     return "ok"

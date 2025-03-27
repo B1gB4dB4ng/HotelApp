@@ -31,7 +31,7 @@ def delete_hotel(db: Session, id: int):
         )
     hotel.is_active = IsActive.deleted
     db.commit()
-    return "ok"
+    return {"message": f"Hotel with ID {id} deleted successfully."}
 
 
 def combined_search_filter(

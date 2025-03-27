@@ -53,11 +53,11 @@ def login(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username"
         )
 
-    if not Hash.verify(request.password, user.hashed_password):
+    if not Hash.verify(user.hashed_password, request.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
         )
 
-    access_token = create_access_token(user=db_user)
+    access_token = create_access_token(user=user)
 
     return {"access_token": access_token, "token_type": "bearer"}

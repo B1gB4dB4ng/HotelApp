@@ -29,7 +29,10 @@ def submit_hotel(
 # read one hotel
 @router.get("/{id}", response_model=HotelDisplay)
 def get_hotel(id: int, db: Session = Depends(get_db)):
-    return db_hotel.get_hotel(db, id)
+    hotel = db_hotel.get_hotel(db, id)
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+    return hotel
 
 
 # Combine search and filter logic into one endpoint

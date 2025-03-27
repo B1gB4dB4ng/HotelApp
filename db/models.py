@@ -12,8 +12,8 @@ class Dbuser(Base):
     hotels = relationship("Dbhotel", back_populates="owner")
     # One-to-many: one user has many booking
     bookings = relationship("Dbbooking", back_populates="user")
-    username = Column(String,unique=True)
-    email = Column(String,unique=True)
+    username = Column(String, unique=True)
+    email = Column(String, unique=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean, default=False)
 
@@ -42,11 +42,14 @@ class Dbhotel(Base):
     description = Column(String, nullable=True)
     price = Column(DECIMAL(8, 2), nullable=False)
     is_active = Column(
-        Enum(IsActive), nullable=False, default=IsActive.active)  # Enforced Enum
+        Enum(IsActive), nullable=False, default=IsActive.active
+    )  # Enforced Enum
     img_link = Column(String, nullable=True)
     is_approved = Column(Boolean, default=False)
 
+
 # ========== BOOKING MODEL ==========
+
 
 class Dbbooking(Base):
     __tablename__ = "booking"

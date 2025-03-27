@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from db.models import Dbbooking, IsActive
+from db.models import Dbbooking, Dbuser, IsActive
 from schemas import BookingCreate, BookingUpdate
 
 
@@ -46,11 +46,10 @@ def get_all_bookings_for_admin(db: Session):
     return db.query(Dbbooking).filter(Dbbooking.is_active == IsActive.active).all()
 
 
-def get_bookings_for_user(db: Session, user_id: int):
-    """Fetch active bookings for a specific user"""
+def get_bookings_for_user(db: Session, user: Dbuser):
     return (
         db.query(Dbbooking)
-        .filter(Dbbooking.user_id == user_id, Dbbooking.is_active == IsActive.active)
+        .filter(Dbbooking.user_id == user.id, Dbbooking.is_active == "active")
         .all()
     )
 

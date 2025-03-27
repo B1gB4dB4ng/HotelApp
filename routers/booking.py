@@ -4,7 +4,7 @@ from typing import List
 from auth.oauth2 import get_current_user
 from db.database import get_db
 from db import db_booking
-from db.models import Dbbooking, Dbuser
+from db.models import Dbbooking, Dbhotel, Dbuser
 from schemas import BookingCreate, BookingShow, BookingUpdate
 
 router = APIRouter(prefix="/booking", tags=["Booking"])
@@ -16,11 +16,18 @@ def create_a_booking(
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
+    # Check if check_in_date is before check_out_date
     if request.check_in_date >= request.check_out_date:
         raise HTTPException(
             status_code=400, detail="check_in_date must be before check_out_date."
         )
 
+    # Check if the hotel exists
+    hotel = db.query(Dbhotel).filter(Dbhotel.id == request.hotel_id).first()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found.")
+
+    # Create the booking if the hotel exists
     new_booking = db_booking.create_booking(db, request, user_id=user.id)
     return new_booking
 
@@ -75,11 +82,12 @@ def get_booking(
     return booking
 
 
-@router.get("/mybookings", response_model=List[BookingShow])
+@router.get("/mybookings/", response_model=List[BookingShow])
 def get_bookings_for_user(
-    db: Session = Depends(get_db), user: Dbuser = Depends(get_current_user)
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),
 ):
-    bookings = db_booking.get_bookings_for_user(db, user.id)
+    bookings = db_booking.get_bookings_for_user(db, user)  # Pass the full user object
     return bookings
 
 

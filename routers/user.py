@@ -15,8 +15,6 @@ PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?
 
 @router.post("/register")
 def register_user(request: UserBase, db: Session = Depends(get_db)):
-    """Handles user registration with input validation."""
-
     # Validate username format
     if not re.match(USERNAME_REGEX, request.username):
         raise HTTPException(

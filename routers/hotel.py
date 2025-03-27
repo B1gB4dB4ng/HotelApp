@@ -23,8 +23,7 @@ def submit_hotel(
     Only authenticated users can create hotels.
     The owner ID is automatically assigned from the logged-in user.
     """
-    return db_hotel.create_hotel(db, request, owner_id=user.id)  # Assign owner_id
-
+    return db_hotel.create_hotel(db, request, owner_id=user.id)  # Now it works
 
 
 # read one hotel
@@ -56,9 +55,8 @@ def get_hotels(
         max_price=max_dec,
         location=location.strip() if location else None,
         skip=0,  # Hardcode or make optional
-        limit=100  # Default limit
+        limit=100,  # Default limit
     )
-
 
 
 # update hotels

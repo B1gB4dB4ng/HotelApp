@@ -7,14 +7,14 @@ from typing import Optional
 from fastapi import HTTPException, status
 
 
-def create_hotel(db: Session, request: HotelBase):
+def create_hotel(db: Session, request: HotelBase, owner_id: int):
     new_hotel = Dbhotel(
         name=request.name,
         location=request.location,
         description=request.description,
         price=request.price,
         img_link=request.img_link,
-        # user_id=user_id  #store the user who submitted
+        owner_id=owner_id,  # Now store the user who submitted the hotel
     )
     db.add(new_hotel)
     db.commit()
@@ -26,9 +26,10 @@ def create_hotel(db: Session, request: HotelBase):
 def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
     if not hotel:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Hotel with {id} not found")
-    hotel.is_active = IsActive.DELETED
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Hotel with {id} not found"
+        )
+    hotel.is_active = IsActive.deleted
     db.commit()
     return "ok"
 
@@ -40,10 +41,10 @@ def combined_search_filter(
     max_price: Optional[Decimal] = None,
     location: Optional[str] = None,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ):
     query = db.query(Dbhotel)
-    
+
     # Search
     if search_term:
         pattern = f"%{search_term}%"
@@ -51,10 +52,10 @@ def combined_search_filter(
             or_(
                 Dbhotel.name.ilike(pattern),
                 Dbhotel.location.ilike(pattern),
-                Dbhotel.description.ilike(pattern)
+                Dbhotel.description.ilike(pattern),
             )
         )
-    
+
     # Filters
     if min_price is not None:
         query = query.filter(Dbhotel.price >= min_price)
@@ -62,7 +63,7 @@ def combined_search_filter(
         query = query.filter(Dbhotel.price <= max_price)
     if location:
         query = query.filter(Dbhotel.location.ilike(f"%{location.strip()}%"))
-    
+
     return query.offset(skip).limit(limit).all()
 
 
@@ -81,7 +82,7 @@ def update_hotel(db: Session, id: int, request: HotelBase):
             Dbhotel.name: request.name,
             Dbhotel.description: request.description,
             Dbhotel.img_link: request.img_link,
-            Dbhotel.is_active: request.is_activate,
+            Dbhotel.is_active: request.is_active,
             Dbhotel.is_approved: request.is_approved,
             Dbhotel.location: request.location,
             Dbhotel.price: request.price,

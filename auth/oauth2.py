@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from dotenv import load_dotenv
 import os
-
 from db.database import get_db
 from db.models import Dbuser
 
@@ -16,10 +15,10 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def create_access_token(user: Dbuser, expires_delta: timedelta | None = None):
+def create_access_token(user: Dbuser, expires_delta: timedelta | None = None) -> str:
     """Creates JWT token with user ID"""
     to_encode = {"sub": str(user.id)}  # Make sure user is a Dbuser object
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))

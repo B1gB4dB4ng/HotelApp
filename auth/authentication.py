@@ -29,7 +29,7 @@ def get_token(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
         )
 
-    access_token = oauth2.create_access_token(data={"sub": user.username})
+    access_token = oauth2.create_access_token(user=user)
 
     return {
         "access_token": access_token,

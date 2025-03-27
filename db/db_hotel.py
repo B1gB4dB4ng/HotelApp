@@ -14,7 +14,7 @@ def create_hotel(db: Session, request: HotelBase, owner_id: int):
         description=request.description,
         price=request.price,
         img_link=request.img_link,
-        owner_id=owner_id,  # Now store the user who submitted the hotel
+        owner_id=owner_id,  #for storing the user who submitted the hotel
     )
     db.add(new_hotel)
     db.commit()
@@ -27,11 +27,10 @@ def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
     if not hotel:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Hotel with {id} not found")
+            detail=f"Cannot delete. Hotel with ID {id} not found.")
     hotel.is_active = IsActive.deleted
     db.commit()
-    return "ok"
-
+    return {"message": f"Hotel with ID {id} deleted successfully."}
 
 def combined_search_filter(
     db: Session,
@@ -71,12 +70,27 @@ def get_all_hotels(db: Session):
 
 
 def get_hotel(db: Session, id: int):
-    return db.query(Dbhotel).filter(Dbhotel.id == id).first()
+    hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
+    if not hotel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Hotel with ID {id} not found."
+        )
+    return hotel
 
 
 def update_hotel(db: Session, id: int, request: HotelBase):
-    hotel = db.query(Dbhotel).filter(Dbhotel.id == id)
-    hotel.update(
+    # checking the existence of the hotel 
+    hotel_query = db.query(Dbhotel).filter(Dbhotel.id == id)
+    existing_hotel = hotel_query.first()
+    if not existing_hotel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cannot update. Hotel with ID {id} not found."
+        )
+
+    # Update fields
+    hotel_query.update(
         {
             Dbhotel.name: request.name,
             Dbhotel.description: request.description,
@@ -88,4 +102,11 @@ def update_hotel(db: Session, id: int, request: HotelBase):
         }
     )
     db.commit()
-    return "ok"
+
+    return {
+        "message": f"Hotel with ID {id} was successfully updated.",
+        "updated_hotel": hotel_query.first()  
+    }
+
+
+

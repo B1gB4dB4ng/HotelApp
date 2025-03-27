@@ -59,7 +59,7 @@ class Dbbooking(Base):
     hotel_id = Column(Integer, ForeignKey("hotel.id"))
     check_in_date = Column(Date, nullable=False)
     check_out_date = Column(Date, nullable=False)
-
+    is_active = Column(Enum(IsActive), nullable=False, default=IsActive.active)
     # Relationships back to user and hotel
     user = relationship("Dbuser", back_populates="bookings")
     hotel = relationship("Dbhotel", back_populates="bookings")

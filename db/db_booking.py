@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from db.models import Dbbooking
-from schemas import BookingCreate
+from db.models import Dbbooking, IsActive
+from schemas import BookingCreate, BookingUpdate
+
 
 def create_booking(db: Session, request: BookingCreate, user_id: int):
     new_booking = Dbbooking(
@@ -15,23 +16,64 @@ def create_booking(db: Session, request: BookingCreate, user_id: int):
     return new_booking
 
 
-def get_all_bookings(db: Session):
-    return db.query(Dbbooking).all()
+def get_booking_by_id(db: Session, booking_id: int):
+    return (
+        db.query(Dbbooking)
+        .filter(
+            Dbbooking.id == booking_id,
+            Dbbooking.is_active == IsActive.active,  # Exclude soft-deleted bookings
+        )
+        .first()
+    )
 
-def get_booking(db: Session, booking_id: int):
-    return db.query(Dbbooking).filter(Dbbooking.id == booking_id).first()
 
-def delete_booking(db: Session, booking_id: int) -> bool:
+def soft_delete_booking(db: Session, booking_id: int):
     booking = db.query(Dbbooking).filter(Dbbooking.id == booking_id).first()
+
     if not booking:
-        return False
+        return None  # Return None if no booking is found
 
-    db.delete(booking)
+    booking.is_active = (
+        IsActive.deleted
+    )  # Mark the booking as inactive instead of deleting
     db.commit()
-    return True
+    db.refresh(booking)
+    return booking  # Return the updated booking
 
-# db_booking.py
+
+def get_all_bookings_for_admin(db: Session):
+    """Fetch all active bookings (only for super admins)"""
+    return db.query(Dbbooking).filter(Dbbooking.is_active == IsActive.active).all()
+
 
 def get_bookings_for_user(db: Session, user_id: int):
-    """Return all bookings for the given user_id."""
-    return db.query(Dbbooking).filter(Dbbooking.user_id == user_id).all()
+    """Fetch active bookings for a specific user"""
+    return (
+        db.query(Dbbooking)
+        .filter(Dbbooking.user_id == user_id, Dbbooking.is_active == IsActive.active)
+        .all()
+    )
+
+
+def update_booking_in_db(
+    db: Session, booking_id: int, request: BookingUpdate
+) -> Dbbooking:
+    # Query the booking by ID
+    booking = db.query(Dbbooking).filter(Dbbooking.id == booking_id)
+
+    # Check if the booking exists
+    if not booking.first():
+        return None  # Return None if the booking is not found
+
+    # Prepare data for updating the booking
+    request_data = request.dict(exclude_unset=True)
+
+    # Update the booking fields (only the fields that are included in the request)
+    booking.update(request_data)
+
+    # Commit the changes to the database
+    db.commit()
+
+    # Return the updated booking (optional - if you want to fetch it back from DB)
+    updated_booking = booking.first()
+    return updated_booking

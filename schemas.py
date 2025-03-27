@@ -71,3 +71,14 @@ class BookingShow(BookingBase):
 
     class Config:
         from_attributes = True
+
+
+class BookingUpdate(BaseModel):
+    hotel_id: Optional[int] = None
+    check_in_date: Optional[date] = None
+    check_out_date: Optional[date] = None
+    # 'is_active' should not be included here or can be restricted
+    # 'user_id' should not be included as it shouldn't be updated
+
+    class Config:
+        from_attributes = True

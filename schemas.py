@@ -55,6 +55,23 @@ class HotelSearch(BaseModel):
     location: Optional[str] = None
 
 
+# Rooms
+class RoomBase(BaseModel):
+    name: str
+    description: Optional[str]
+    price: Decimal
+    #hotel_id: int
+    img_link: Optional[str]
+
+class RoomDisplay(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    price: Decimal
+    hotel_id: int
+    img_link: Optional[str]
+
+
 class BookingBase(BaseModel):
     hotel_id: int
     check_in_date: date

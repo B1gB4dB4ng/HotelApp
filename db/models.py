@@ -37,6 +37,8 @@ class Dbhotel(Base):
     owner = relationship("Dbuser", back_populates="hotels")
     #
     bookings = relationship("Dbbooking", back_populates="hotel")
+    # One-to-many: Hotel can have several rooms
+    rooms = relationship("Dbroom", back_populates="hotel")
     name = Column(String, index=True)
     location = Column(String, nullable=False)
     description = Column(String, nullable=True)
@@ -47,6 +49,21 @@ class Dbhotel(Base):
     img_link = Column(String, nullable=True)
     is_approved = Column(Boolean, default=False)
 
+
+# ========== ROOM MODEL ===========
+
+class Dbroom(Base):
+    __tablename__ = "room"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    price = Column(DECIMAL(8, 2), nullable=False)
+    # ForeignKey to Dbhotel
+    hotel_id = Column(Integer, ForeignKey("hotel.id"))
+    #Many-to-one: Many rooms belong to hotel
+    hotel = relationship("Dbhotel", back_populates="rooms")
+    img_link = Column(String, nullable=True)
 
 # ========== BOOKING MODEL ==========
 

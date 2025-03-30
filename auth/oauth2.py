@@ -19,16 +19,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 def create_access_token(user: Dbuser, expires_delta: timedelta | None = None) -> str:
-    """Creates JWT token with user ID"""
+    ### Creates JWT token with user ID
     to_encode = {"sub": str(user.id)}  # Make sure user is a Dbuser object
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     to_encode.update({"exp": expire})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def verify_access_token(token: str):
-    """Decodes JWT and returns payload if valid"""
+    ### """Decodes JWT and returns payload if valid"""
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
@@ -38,7 +40,7 @@ def verify_access_token(token: str):
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> Dbuser:
-    """Extracts user from JWT token and fetches from database"""
+    ### """Extracts user from JWT token and fetches from database"""
     payload = verify_access_token(token)
     if payload is None:
         raise HTTPException(

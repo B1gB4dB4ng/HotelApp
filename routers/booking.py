@@ -4,7 +4,7 @@ from typing import List
 from auth.oauth2 import get_current_user
 from db.database import get_db
 from db import db_booking
-from db.models import Dbbooking, Dbhotel, Dbuser
+from db.models import Dbbooking, Dbhotel, Dbroom, Dbuser
 from schemas import BookingCreate, BookingShow, BookingUpdate
 
 router = APIRouter(prefix="/booking", tags=["Booking"])
@@ -22,13 +22,34 @@ def create_a_booking(
             status_code=400, detail="check_in_date must be before check_out_date."
         )
 
-    # Check if the hotel exists
+    # Validate if the hotel exists
     hotel = db.query(Dbhotel).filter(Dbhotel.id == request.hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found.")
 
-    # Create the booking if the hotel exists
+    # Validate if the room exists within the specified hotel
+    room = (
+        db.query(Dbroom)
+        .filter(Dbroom.id == request.room_id, Dbroom.hotel_id == request.hotel_id)
+        .first()
+    )
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found in this hotel.")
+
+    # Check if the room is available for the requested dates
+    if not db_booking.check_room_availability(
+        db, request.room_id, request.check_in_date, request.check_out_date
+    ):
+        raise HTTPException(
+            status_code=400, detail="The room is not available for the selected dates."
+        )
+
+    # Create the booking
     new_booking = db_booking.create_booking(db, request, user_id=user.id)
+
+    if not new_booking:
+        raise HTTPException(status_code=400, detail="Failed to create booking.")
+
     return new_booking
 
 
@@ -43,7 +64,12 @@ def get_all_bookings_for_admin(
             status_code=403, detail="Not authorized to view all bookings"
         )
 
-    return db_booking.get_all_bookings_for_admin(db)
+    bookings = db_booking.get_all_bookings_for_admin(db)
+
+    if not bookings:  # If bookings list is empty, raise 404
+        raise HTTPException(status_code=404, detail="No bookings found")
+
+    return bookings
 
 
 @router.get("/user/{user_id}", response_model=List[BookingShow])
@@ -54,10 +80,14 @@ def get_user_bookings(
 ):
     if not user.is_superuser:
         raise HTTPException(
-            status_code=403, detail="Not authorized to view other users' bookings"
+            status_code=403, detail="Not authorized to view  users' bookings"
         )
 
     bookings = db_booking.get_bookings_for_user(db, user_id)
+
+    if not bookings:  # If no bookings exist, raise 404
+        raise HTTPException(status_code=404, detail="No bookings found")
+
     return bookings
 
 
@@ -113,7 +143,7 @@ def delete_booking(
     return {"message": f"Booking with ID {booking_id}  deleted successfully"}
 
 
-@router.patch("/{booking_id}", response_model=BookingShow)
+@router.put("/{booking_id}", response_model=BookingShow)
 def update_booking(
     booking_id: int,
     request: BookingUpdate,

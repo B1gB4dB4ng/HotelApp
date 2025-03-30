@@ -1,20 +1,30 @@
 from sqlalchemy.orm import Session
 from db.models import Dbhotel, IsActive
 from schemas import HotelBase
-from sqlalchemy import or_, and_
-from decimal import Decimal
+from sqlalchemy import or_
 from typing import Optional
-from fastapi import HTTPException, status
 
 
 def create_hotel(db: Session, request: HotelBase, owner_id: int):
+    # Check if a hotel with the same name and location already exists
+    existing_hotel = (
+        db.query(Dbhotel)
+        .filter(Dbhotel.name == request.name, Dbhotel.location == request.location)
+        .first()
+    )
+
+    if existing_hotel:
+        return None  # Return None if the hotel already exists, no exception raised here
+
+    # If no duplicate found, create a new hotel
     new_hotel = Dbhotel(
         name=request.name,
         location=request.location,
         description=request.description,
-        price=request.price,
         img_link=request.img_link,
-        owner_id=owner_id,  # Now store the user who submitted the hotel
+        phone_number=request.phone_number,
+        email=request.email,
+        owner_id=owner_id,
     )
     db.add(new_hotel)
     db.commit()
@@ -25,20 +35,18 @@ def create_hotel(db: Session, request: HotelBase, owner_id: int):
 # delete hotel
 def delete_hotel(db: Session, id: int):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
-    if not hotel:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Hotel with {id} not found"
-        )
-    hotel.is_active = IsActive.deleted
-    db.commit()
-    return {"message": f"Hotel with ID {id} deleted successfully."}
+
+    if hotel:
+        hotel.is_active = IsActive.deleted  # Mark hotel as deleted
+        db.commit()
+        return f"Hotel with ID {id} deleted successfully."  # Return success message
+    else:
+        return None  # Return None if hotel not found
 
 
 def combined_search_filter(
     db: Session,
     search_term: Optional[str] = None,
-    min_price: Optional[Decimal] = None,
-    max_price: Optional[Decimal] = None,
     location: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
@@ -55,12 +63,6 @@ def combined_search_filter(
                 Dbhotel.description.ilike(pattern),
             )
         )
-
-    # Filters
-    if min_price is not None:
-        query = query.filter(Dbhotel.price >= min_price)
-    if max_price is not None:
-        query = query.filter(Dbhotel.price <= max_price)
     if location:
         query = query.filter(Dbhotel.location.ilike(f"%{location.strip()}%"))
 
@@ -76,17 +78,20 @@ def get_hotel(db: Session, id: int):
 
 
 def update_hotel(db: Session, id: int, request: HotelBase):
-    hotel = db.query(Dbhotel).filter(Dbhotel.id == id)
-    hotel.update(
-        {
-            Dbhotel.name: request.name,
-            Dbhotel.description: request.description,
-            Dbhotel.img_link: request.img_link,
-            Dbhotel.is_active: request.is_active,
-            Dbhotel.is_approved: request.is_approved,
-            Dbhotel.location: request.location,
-            Dbhotel.price: request.price,
-        }
-    )
+    hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
+
+    if not hotel:
+        return None  # Handle this in the route function
+
+    hotel.name = request.name
+    hotel.description = request.description
+    hotel.img_link = request.img_link
+    hotel.is_active = request.is_active
+    hotel.is_approved = request.is_approved
+    hotel.location = request.location
+    hotel.phone_number = request.phone_number
+    hotel.email = request.email
+
     db.commit()
-    return "ok"
+    db.refresh(hotel)  # Refresh to get the latest DB state
+    return hotel  # Return the updated hotel object

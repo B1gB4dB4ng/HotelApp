@@ -15,7 +15,7 @@ router = APIRouter(prefix="/hotel", tags=["Hotel"])
 def submit_hotel(
     request: HotelBase,
     db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
+    user: Dbuser = Depends(get_current_user),
 ):
     # Call db_hotel.create_hotel and check for duplication
     new_hotel = db_hotel.create_hotel(db, request, owner_id=user.id)
@@ -59,7 +59,7 @@ def get_hotels(
 # update hotels
 @router.put(
     "/{id}",
-    response_model=UpdateHotelResponse,  # Specify response model
+    response_model=UpdateHotelResponse,
     summary="Update hotel",
     description="Only owner or super admin can update",
 )

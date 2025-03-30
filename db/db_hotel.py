@@ -14,7 +14,7 @@ def create_hotel(db: Session, request: HotelBase, owner_id: int):
     )
 
     if existing_hotel:
-        return None  # Return None if the hotel already exists, no exception raised here
+        return None  # Return None if the hotel already exists
 
     # If no duplicate found, create a new hotel
     new_hotel = Dbhotel(
@@ -81,7 +81,7 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
     if not hotel:
-        return None  # Handle this in the route function
+        return None  
 
     hotel.name = request.name
     hotel.description = request.description
@@ -93,5 +93,5 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     hotel.email = request.email
 
     db.commit()
-    db.refresh(hotel)  # Refresh to get the latest DB state
-    return hotel  # Return the updated hotel object
+    db.refresh(hotel)  
+    return hotel 

@@ -28,7 +28,7 @@ class Dbuser(Base):
     reviews = relationship("Dbreview", back_populates="user")
 
 
-class IsActive(PyEnum):  # Define Enum for strict values
+class IsActive(PyEnum):  
     inactive = "inactive"
     active = "active"
     deleted = "deleted"
@@ -49,7 +49,7 @@ class Dbhotel(Base):
     phone_number = Column(String)
     email = Column(String)
 
-    # Add the relationships to bookings, rooms, and reviews
+    
     bookings = relationship("Dbbooking", back_populates="hotel")
     rooms = relationship("Dbroom", back_populates="hotel")
     reviews = relationship("Dbreview", back_populates="hotel")
@@ -95,7 +95,7 @@ class Dbbooking(Base):
     room_id = Column(Integer, ForeignKey("room.id"))  # Foreign key to room
     hotel_id = Column(
         Integer, ForeignKey("hotel.id")
-    )  # Foreign key to hotel (added this line)
+    )  # Foreign key to hotel 
     check_in_date = Column(Date)
     check_out_date = Column(Date)
     is_active = Column(Enum(IsActive), default=IsActive.active)

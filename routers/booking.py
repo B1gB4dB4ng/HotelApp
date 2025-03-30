@@ -53,46 +53,8 @@ def create_a_booking(
     return new_booking
 
 
-# FOR SUPERADMIN
-@router.get("/", response_model=List[BookingShow])
-def get_all_bookings_for_admin(
-    db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),
-):
-    if not user.is_superuser:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view all bookings"
-        )
-
-    bookings = db_booking.get_all_bookings_for_admin(db)
-
-    if not bookings:  # If bookings list is empty, raise 404
-        raise HTTPException(status_code=404, detail="No bookings found")
-
-    return bookings
-
-
-@router.get("/user/{user_id}", response_model=List[BookingShow])
-def get_user_bookings(
-    user_id: int,
-    db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),
-):
-    if not user.is_superuser:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view  users' bookings"
-        )
-
-    bookings = db_booking.get_bookings_for_user(db, user_id)
-
-    if not bookings:  # If no bookings exist, raise 404
-        raise HTTPException(status_code=404, detail="No bookings found")
-
-    return bookings
-
-
 # FOR USER
-@router.get("/{booking_id}", response_model=BookingShow)
+@router.get("/{booking_id}", response_model=BookingShow, summary="Get booking by ID")
 def get_booking(
     booking_id: int,
     db: Session = Depends(get_db),
@@ -112,7 +74,9 @@ def get_booking(
     return booking
 
 
-@router.get("/mybookings/", response_model=List[BookingShow])
+@router.get(
+    "/mybookings/", response_model=List[BookingShow], summary="Get Bookings For User"
+)
 def get_bookings_for_user(
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
@@ -121,7 +85,7 @@ def get_bookings_for_user(
     return bookings
 
 
-@router.delete("/{booking_id}")
+@router.delete("/{booking_id}", summary="Delete Booking")
 def delete_booking(
     booking_id: int,
     db: Session = Depends(get_db),
@@ -143,7 +107,7 @@ def delete_booking(
     return {"message": f"Booking with ID {booking_id}  deleted successfully"}
 
 
-@router.put("/{booking_id}", response_model=BookingShow)
+@router.put("/{booking_id}", response_model=BookingShow, summary="Update Booking")
 def update_booking(
     booking_id: int,
     request: BookingUpdate,
@@ -182,3 +146,49 @@ def update_booking(
         )
 
     return updated_booking
+
+
+# FOR SUPERADMIN
+@router.get(
+    "/",
+    response_model=List[BookingShow],
+    summary="ADMIN / Get All Bookings",
+)
+def get_all_bookings_for_admin(
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),
+):
+    if not user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view all bookings"
+        )
+
+    bookings = db_booking.get_all_bookings_for_admin(db)
+
+    if not bookings:
+        raise HTTPException(status_code=404, detail="No bookings found")
+
+    return bookings
+
+
+@router.get(
+    "/user/{user_id}",
+    response_model=List[BookingShow],
+    summary="ADMIN / Get bookings by User ID",
+)
+def get_user_bookings(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),
+):
+    if not user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view  users' bookings"
+        )
+
+    bookings = db_booking.get_bookings_for_user(db, user_id)
+
+    if not bookings:  # If no bookings exist, raise 404
+        raise HTTPException(status_code=404, detail="No bookings found")
+
+    return bookings

@@ -87,7 +87,7 @@ def get_booking_by_id(db: Session, booking_id: int):
         db.query(Dbbooking)
         .filter(
             Dbbooking.id == booking_id,
-            Dbbooking.is_active == IsActive.active,  # Exclude soft-deleted bookings
+            Dbbooking.is_active == IsActive.active,  
         )
         .first()
     )
@@ -119,11 +119,11 @@ def get_all_bookings_for_admin(db: Session):
 
 
 def get_bookings_for_user(db: Session, user: Dbuser):
-    # Corrected to use user.id
+   
     bookings = (
         db.query(Dbbooking)
         .filter(
-            Dbbooking.user_id == user.id,  # Use user.id, not the entire Dbuser object
+            Dbbooking.user_id == user.id,  
             Dbbooking.is_active == IsActive.active,
         )
         .all()

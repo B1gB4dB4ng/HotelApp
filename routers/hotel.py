@@ -3,9 +3,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_hotel
 from db.models import Dbuser
-from schemas import HotelBase, HotelDisplay
-from schemas import HotelSearch
-from decimal import Decimal
+from schemas import HotelBase, HotelDisplay, UpdateHotelResponse
 from typing import Optional, List
 from auth.oauth2 import get_current_user
 
@@ -17,13 +15,17 @@ router = APIRouter(prefix="/hotel", tags=["Hotel"])
 def submit_hotel(
     request: HotelBase,
     db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
+    user: Dbuser = Depends(get_current_user),
 ):
-    """
-    Only authenticated users can create hotels.
-    The owner ID is automatically assigned from the logged-in user.
-    """
-    return db_hotel.create_hotel(db, request, owner_id=user.id)  # Now it works
+    # Call db_hotel.create_hotel and check for duplication
+    new_hotel = db_hotel.create_hotel(db, request, owner_id=user.id)
+
+    if not new_hotel:  # If None is returned (i.e., hotel already exists)
+        raise HTTPException(
+            status_code=400, detail="A hotel with this name and location already exists"
+        )
+
+    return new_hotel  # Proceed to return the newly created hotel if no duplication
 
 
 # read one hotel
@@ -41,21 +43,13 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
 )
 def get_hotels(
     search_term: Optional[str] = None,
-    min_price: Optional[float] = Query(None, ge=0),
-    max_price: Optional[float] = Query(None, ge=0),
     location: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
-    # Convert to Decimal (if values exist)
-    min_dec = Decimal(str(min_price)) if min_price is not None else None
-    max_dec = Decimal(str(max_price)) if max_price is not None else None
-
     # Use the COMBINED function (from db_hotel.py)
     return db_hotel.combined_search_filter(
         db,
         search_term=search_term,
-        min_price=min_dec,
-        max_price=max_dec,
         location=location.strip() if location else None,
         skip=0,  # Hardcode or make optional
         limit=100,  # Default limit
@@ -63,7 +57,12 @@ def get_hotels(
 
 
 # update hotels
-@router.post("/{id}/update")
+@router.put(
+    "/{id}",
+    response_model=UpdateHotelResponse,
+    summary="Update hotel",
+    description="Only owner or super admin can update",
+)
 def update_hotel(
     id: int,
     request: HotelBase,
@@ -79,24 +78,32 @@ def update_hotel(
             status_code=403, detail="Not authorized to update this hotel"
         )
 
-    return db_hotel.update_hotel(db, id, request)
+    if not user.is_superuser and request.is_approved != hotel.is_approved:
+        raise HTTPException(
+            status_code=403, detail="Only an admin can update is_approved"
+        )
+
+    updated_hotel = db_hotel.update_hotel(db, id, request)
+
+    if not updated_hotel:
+        raise HTTPException(status_code=500, detail="Failed to update hotel")
+
+    return UpdateHotelResponse(
+        message="Hotel updated successfully", hotel=updated_hotel
+    )
 
 
 ### DELETE HOTEL (Only Owner or Super Admin)
 @router.delete(
-    "/{id}/delete",
-    tags=["Hotel"],
+    "/{id}",
     summary="Remove hotel",
     description="Only owner or super admin can delete",
 )
 def delete_hotel(
     id: int,
     db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
+    user: Dbuser = Depends(get_current_user),
 ):
-    """
-    Only the owner or a super admin can delete a hotel.
-    """
     hotel = db_hotel.get_hotel(db, id)
 
     if not hotel:
@@ -107,4 +114,7 @@ def delete_hotel(
             status_code=403, detail="Not authorized to delete this hotel"
         )
 
-    return db_hotel.delete_hotel(db, id)
+    # Call delete_hotel from db_hotel and get the result
+    delete_message = db_hotel.delete_hotel(db, id)
+
+    return {"message": delete_message}  # Return success message

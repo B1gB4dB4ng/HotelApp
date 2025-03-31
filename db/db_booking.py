@@ -1,18 +1,84 @@
 from sqlalchemy.orm import Session
-from db.models import Dbbooking, Dbuser, IsActive
+from db.models import Dbbooking, Dbroom, Dbuser, IsActive, IsRoomStatus
 from schemas import BookingCreate, BookingUpdate
+from datetime import date
+
+
+def calculate_total_cost(
+    db: Session, room_id: int, check_in_date: date, check_out_date: date
+):
+    # Fetch the room's price per night
+    room = db.query(Dbroom).filter(Dbroom.id == room_id).first()
+
+    if not room:
+        return None  # Room not found
+
+    # Calculate the total cost for the booking
+    total_nights = (check_out_date - check_in_date).days
+    if total_nights <= 0:
+        return None  # Invalid booking dates
+
+    return room.price_per_night * total_nights  # Return the total cost
+
+
+def check_room_availability(
+    db: Session, room_id: int, check_in_date: date, check_out_date: date
+):
+    # Check if the room exists
+    room = db.query(Dbroom).filter(Dbroom.id == room_id).first()
+    if not room:
+        return False  # Room not found
+
+    # Check if the room is available for the requested dates
+    if room.status != IsRoomStatus.available:
+        return False  # If the room is not available, return False
+
+    overlapping_booking = (
+        db.query(Dbbooking)
+        .filter(
+            Dbbooking.room_id == room_id,
+            Dbbooking.check_in_date < check_out_date,
+            Dbbooking.check_out_date > check_in_date,
+            Dbbooking.is_active == IsActive.active,
+        )
+        .first()
+    )
+
+    if overlapping_booking:
+        return False  # Room is not available
+
+    return True  # Room is available
 
 
 def create_booking(db: Session, request: BookingCreate, user_id: int):
+    # Create the booking (without checking availability here)
     new_booking = Dbbooking(
         user_id=user_id,
         hotel_id=request.hotel_id,
+        room_id=request.room_id,
         check_in_date=request.check_in_date,
         check_out_date=request.check_out_date,
     )
+
+    # Calculate the total cost
+    total_cost = calculate_total_cost(
+        db, request.room_id, request.check_in_date, request.check_out_date
+    )
+    if total_cost is None:
+        return None  # If there's an issue with the cost calculation
+
+    new_booking.total_cost = total_cost
+
+    # Update the room status to reserved
+    room = db.query(Dbroom).filter(Dbroom.id == request.room_id).first()
+    if room:
+        room.status = IsRoomStatus.reserved
+        db.commit()
+
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
     return new_booking
 
 
@@ -21,7 +87,7 @@ def get_booking_by_id(db: Session, booking_id: int):
         db.query(Dbbooking)
         .filter(
             Dbbooking.id == booking_id,
-            Dbbooking.is_active == IsActive.active,  # Exclude soft-deleted bookings
+            Dbbooking.is_active == IsActive.active,  
         )
         .first()
     )
@@ -36,22 +102,34 @@ def soft_delete_booking(db: Session, booking_id: int):
     booking.is_active = (
         IsActive.deleted
     )  # Mark the booking as inactive instead of deleting
+
+    # Update the room status to available
+    room = db.query(Dbroom).filter(Dbroom.id == booking.room_id).first()
+    if room:
+        room.status = IsRoomStatus.available
+        db.commit()
+
     db.commit()
     db.refresh(booking)
     return booking  # Return the updated booking
 
 
 def get_all_bookings_for_admin(db: Session):
-    """Fetch all active bookings (only for super admins)"""
     return db.query(Dbbooking).filter(Dbbooking.is_active == IsActive.active).all()
 
 
 def get_bookings_for_user(db: Session, user: Dbuser):
-    return (
+   
+    bookings = (
         db.query(Dbbooking)
-        .filter(Dbbooking.user_id == user.id, Dbbooking.is_active == "active")
+        .filter(
+            Dbbooking.user_id == user.id,  
+            Dbbooking.is_active == IsActive.active,
+        )
         .all()
     )
+
+    return bookings
 
 
 def update_booking_in_db(

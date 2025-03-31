@@ -1,7 +1,7 @@
 from decimal import Decimal
 from datetime import date, timedelta
 from typing import Literal, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel,  condecimal
 
 
 class UserBase(BaseModel):
@@ -133,7 +133,7 @@ class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
     booking_id: int
-    rating: Decimal
+    rating: condecimal(max_digits=2, decimal_places=1)
     comment: Optional[str]
     created_at: date
 

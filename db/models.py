@@ -16,19 +16,23 @@ from enum import Enum as PyEnum
 
 class Dbuser(Base):
     __tablename__ = "user"
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_superuser = Column(Boolean, default=False)
-    phone_number = Column(String, nullable=True)  # Added phone_number
+    phone_number = Column(String, nullable=True)
 
     hotels = relationship("Dbhotel", back_populates="owner")
     bookings = relationship("Dbbooking", back_populates="user")
     reviews = relationship("Dbreview", back_populates="user")
+    payments = relationship(
+        "Dbpayment", back_populates="user"
+    )  # Added for 1:M user-payment
 
 
-class IsActive(PyEnum):  
+class IsActive(PyEnum):
     inactive = "inactive"
     active = "active"
     deleted = "deleted"
@@ -49,7 +53,6 @@ class Dbhotel(Base):
     phone_number = Column(String)
     email = Column(String)
 
-    
     bookings = relationship("Dbbooking", back_populates="hotel")
     rooms = relationship("Dbroom", back_populates="hotel")
     reviews = relationship("Dbreview", back_populates="hotel")
@@ -91,11 +94,9 @@ class Dbbooking(Base):
     __tablename__ = "booking"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("user.id"))  # Foreign key to user
-    room_id = Column(Integer, ForeignKey("room.id"))  # Foreign key to room
-    hotel_id = Column(
-        Integer, ForeignKey("hotel.id")
-    )  # Foreign key to hotel 
+    user_id = Column(Integer, ForeignKey("user.id"))
+    room_id = Column(Integer, ForeignKey("room.id"))
+    hotel_id = Column(Integer, ForeignKey("hotel.id"))
     check_in_date = Column(Date)
     check_out_date = Column(Date)
     is_active = Column(Enum(IsActive), default=IsActive.active)
@@ -108,8 +109,12 @@ class Dbbooking(Base):
 
     hotel = relationship("Dbhotel", back_populates="bookings")
     user = relationship("Dbuser", back_populates="bookings")
-    payments = relationship("Dbpayment", back_populates="booking")
-    reviews = relationship("Dbreview", back_populates="booking")
+    payment = relationship(
+        "Dbpayment", back_populates="booking", uselist=False
+    )  # Changed to singular
+    review = relationship(
+        "Dbreview", back_populates="booking", uselist=False
+    )  # Changed to singular
 
 
 class IsPaymentStatus(PyEnum):
@@ -123,12 +128,16 @@ class Dbpayment(Base):
     __tablename__ = "payment"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("booking.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("user.id"))  # Added user_id
+    booking_id = Column(
+        Integer, ForeignKey("booking.id", ondelete="CASCADE"), unique=True
+    )  # Enforcing 1:1
     amount = Column(DECIMAL(10, 2), nullable=False)
     status = Column(Enum(IsPaymentStatus), nullable=False)
     payment_date = Column(Date, nullable=False)
 
-    booking = relationship("Dbbooking", back_populates="payments")
+    booking = relationship("Dbbooking", back_populates="payment")  # Changed to singular
+    user = relationship("Dbuser", back_populates="payments")  # Updated
 
 
 class Dbreview(Base):
@@ -137,11 +146,13 @@ class Dbreview(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
     hotel_id = Column(Integer, ForeignKey("hotel.id", ondelete="CASCADE"))
-    booking_id = Column(Integer, ForeignKey("booking.id", ondelete="CASCADE"))
+    booking_id = Column(
+        Integer, ForeignKey("booking.id", ondelete="CASCADE"), unique=True
+    )  # Enforcing 1:1
     rating = Column(DECIMAL(2, 1), nullable=False)
     comment = Column(String, nullable=True)
     created_at = Column(Date, default=func.now(), nullable=False)
 
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
-    booking = relationship("Dbbooking", back_populates="reviews")
+    booking = relationship("Dbbooking", back_populates="review")  # Changed to singular

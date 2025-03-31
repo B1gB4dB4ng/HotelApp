@@ -81,7 +81,7 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
     if not hotel:
-        return None  
+        return None
 
     hotel.name = request.name
     hotel.description = request.description
@@ -93,5 +93,5 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     hotel.email = request.email
 
     db.commit()
-    db.refresh(hotel)  
-    return hotel 
+    db.refresh(hotel)
+    return hotel

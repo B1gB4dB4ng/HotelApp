@@ -1,7 +1,8 @@
 from decimal import Decimal
 from datetime import date, timedelta
 from typing import Literal, Optional
-from pydantic import BaseModel,  condecimal
+from pydantic import BaseModel,  condecimal, field_serializer
+from enum import Enum
 
 
 class UserBase(BaseModel):
@@ -60,6 +61,7 @@ class RoomBase(BaseModel):
     room_number: str
     description: Optional[str]
     price_per_night: Decimal
+    #is_active: Literal["inactive", "active", "deleted"]
     wifi: bool = False
     air_conditioner: bool = False
     tv: bool = False
@@ -73,15 +75,19 @@ class RoomDisplay(BaseModel):
     room_number: str
     description: Optional[str]
     price_per_night: Decimal
-    is_active: Literal["inactive", "active", "deleted"]
+    is_active: str
     wifi: bool
     air_conditioner: bool
     tv: bool
-    status: Literal["available", "booked"]
+    status: str
     bed_count: int
 
     class Config:
         from_attributes = True
+
+    @field_serializer("is_active", "status")  # ✅ Convert Enum to string
+    def serialize_enum(value: Enum) -> str:
+        return value.value if isinstance(value, Enum) else value
 
 
 class BookingBase(BaseModel):

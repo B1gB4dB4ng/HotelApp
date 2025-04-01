@@ -34,7 +34,7 @@ def check_room_availability(
         db.query(Dbroom)
         .filter(
             Dbroom.id == room_id,
-            Dbroom.is_active == IsActive.active,  # assuming you have this field
+            Dbroom.is_active == IsActive.active,  
         )
         .first()
     )

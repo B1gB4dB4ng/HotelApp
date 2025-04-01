@@ -2,7 +2,8 @@ from decimal import Decimal
 from datetime import date, timedelta
 from typing import Literal, Optional
 from pydantic import BaseModel
-
+from pydantic import BaseModel, field_serializer, validator
+from enum import Enum
 
 class UserBase(BaseModel):
     username: str
@@ -73,11 +74,11 @@ class RoomDisplay(BaseModel):
     room_number: str
     description: Optional[str]
     price_per_night: Decimal
-    is_active: Literal["inactive", "active", "deleted"]
+    is_active: str
     wifi: bool
     air_conditioner: bool
     tv: bool
-    status: Literal["available", "booked"]
+    status: str
     bed_count: int
 
     class Config:
@@ -150,3 +151,25 @@ class HotelSearch(BaseModel):
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
     location: Optional[str] = None
+
+
+class RoomCreate(BaseModel):
+    hotel_id: int  # Required to associate room with a hotel
+    room_number: str
+    description: Optional[str] = None
+    price_per_night: Decimal
+    wifi: bool = False
+    air_conditioner: bool = False
+    tv: bool = False
+    bed_count: int
+
+
+class RoomUpdate(BaseModel):
+    description: Optional[str] = None
+    price_per_night: Optional[Decimal] = None
+    wifi: Optional[bool] = None
+    air_conditioner: Optional[bool] = None
+    tv: Optional[bool] = None
+    status: Optional[Literal["available", "booked", "unavailable"]] = None
+    bed_count: Optional[int] = None
+

@@ -1,4 +1,10 @@
+from sqlalchemy.orm import relationship
+from enum import Enum as PyEnum
 from db.database import Base
+from sqlalchemy import Column, Enum, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
+
+
 from sqlalchemy import (
     DECIMAL,
     Column,
@@ -10,9 +16,6 @@ from sqlalchemy import (
     Date,
     func,
 )
-from sqlalchemy.orm import relationship
-from enum import Enum as PyEnum
-
 
 class Dbuser(Base):
     __tablename__ = "user"
@@ -61,7 +64,7 @@ class Dbhotel(Base):
 
 class IsRoomStatus(PyEnum):
     available = "available"
-    reserved = "reserved"
+    reserved = "booked"
     unavailable = "unavailable"
 
 

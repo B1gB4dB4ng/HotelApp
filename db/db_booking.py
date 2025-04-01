@@ -1,3 +1,4 @@
+from operator import and_, or_
 from sqlalchemy.orm import Session
 from db.models import Dbbooking, Dbroom, Dbuser, IsActive, IsRoomStatus
 from schemas import BookingCreate, BookingUpdate
@@ -23,31 +24,47 @@ def calculate_total_cost(
 
 def check_room_availability(
     db: Session, room_id: int, check_in_date: date, check_out_date: date
-):
-    # Check if the room exists
-    room = db.query(Dbroom).filter(Dbroom.id == room_id).first()
-    if not room:
-        return False  # Room not found
+) -> bool:
+    # Validate dates
+    if check_out_date <= check_in_date:
+        return False  # Invalid date range
 
-    # Check if the room is available for the requested dates
-    if room.status != IsRoomStatus.available:
-        return False  # If the room is not available, return False
-
-    overlapping_booking = (
-        db.query(Dbbooking)
+    # Check if room exists and is active
+    room = (
+        db.query(Dbroom)
         .filter(
-            Dbbooking.room_id == room_id,
-            Dbbooking.check_in_date < check_out_date,
-            Dbbooking.check_out_date > check_in_date,
-            Dbbooking.is_active == IsActive.active,
+            Dbroom.id == room_id,
+            Dbroom.is_active == IsActive.active,  # assuming you have this field
         )
         .first()
     )
 
-    if overlapping_booking:
-        return False  # Room is not available
+    if not room:
+        return False
 
-    return True  # Room is available
+    # Check for overlapping bookings
+    overlapping_booking = (
+        db.query(Dbbooking)
+        .filter(
+            Dbbooking.room_id == room_id,
+            Dbbooking.is_active == IsActive.active,
+            # Alternative overlapping condition that might be clearer
+            or_(
+                and_(
+                    Dbbooking.check_in_date < check_out_date,
+                    Dbbooking.check_out_date > check_in_date,
+                ),
+                # This covers cases where a booking completely contains the requested period
+                and_(
+                    Dbbooking.check_in_date >= check_in_date,
+                    Dbbooking.check_out_date <= check_out_date,
+                ),
+            ),
+        )
+        .first()
+    )
+
+    return not overlapping_booking
 
 
 def create_booking(db: Session, request: BookingCreate, user_id: int):
@@ -87,7 +104,7 @@ def get_booking_by_id(db: Session, booking_id: int):
         db.query(Dbbooking)
         .filter(
             Dbbooking.id == booking_id,
-            Dbbooking.is_active == IsActive.active,  
+            Dbbooking.is_active == IsActive.active,
         )
         .first()
     )
@@ -119,11 +136,10 @@ def get_all_bookings_for_admin(db: Session):
 
 
 def get_bookings_for_user(db: Session, user: Dbuser):
-   
     bookings = (
         db.query(Dbbooking)
         .filter(
-            Dbbooking.user_id == user.id,  
+            Dbbooking.user_id == user.id,
             Dbbooking.is_active == IsActive.active,
         )
         .all()

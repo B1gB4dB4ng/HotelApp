@@ -13,7 +13,7 @@ def create_room(db: Session, request: RoomBase, hotel_id: int):
         room_number=request.room_number,
         description=request.description,
         price_per_night=request.price_per_night,
-        is_active=IsActive.active,
+        is_active=request.is_active,
         wifi = request.wifi,
         tv = request.tv,
         air_conditioner = request.air_conditioner,
@@ -24,3 +24,6 @@ def create_room(db: Session, request: RoomBase, hotel_id: int):
     db.commit()
     db.refresh(new_room)
     return new_room
+
+def get_room_by_number(db: Session, room_num: int, hotel_id: int):
+    return db.query(Dbroom).filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id).first()

@@ -65,7 +65,7 @@ class RoomBase(BaseModel):
     room_number: str
     description: Optional[str]
     price_per_night: Decimal
-    #is_active: Literal["inactive", "active", "deleted"]
+    is_active: Literal["inactive", "active", "deleted"] = "active"
     wifi: bool = False
     air_conditioner: bool = False
     tv: bool = False

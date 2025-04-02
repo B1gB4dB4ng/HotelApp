@@ -14,22 +14,30 @@ router = APIRouter(prefix="/user", tags=["user"])
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{3,}$"
 PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
 
-
-@router.post("/register")
-def register_user(request: UserBase, db: Session = Depends(get_db)):
-    # Validate username format
-    if not re.match(USERNAME_REGEX, request.username):
+# Validate username format
+def validate_username(username: str):
+    if not re.match(USERNAME_REGEX, username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid username format. Only letters, numbers, and underscores allowed (min 3 characters).",
         )
-
-    # Validate password format
-    if not re.match(PASSWORD_REGEX, request.password):
+    
+# Validate password format
+def validate_password(password: str):
+    if not re.match(PASSWORD_REGEX, password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid password format. Must be at least 8 characters long, including an uppercase letter, lowercase letter, number, and special character.",
         )
+
+
+@router.post("/register")
+def register_user(request: UserBase, db: Session = Depends(get_db)):
+    # Validate username format
+    validate_username(request.username)
+
+    # Validate password format
+    validate_password(request.password)
 
     # Check if the username already exists in the database
     existing_user = db_user.get_user_by_username(db, request.username)
@@ -82,18 +90,10 @@ def update_user(
         )
     
     # Validate username format
-    if not re.match(USERNAME_REGEX, request.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid username format. Only letters, numbers, and underscores allowed (min 3 characters).",
-        )
+    validate_username(request.username)
 
     # Validate password format
-    if not re.match(PASSWORD_REGEX, request.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid password format. Must be at least 8 characters long, including an uppercase letter, lowercase letter, number, and special character.",
-        )
+    validate_password(request.password)
 
     # Check if the username already exists in the database
     existing_user = db_user.get_user_by_username(db, request.username)

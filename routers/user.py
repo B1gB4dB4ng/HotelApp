@@ -14,6 +14,9 @@ router = APIRouter(prefix="/user", tags=["user"])
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{3,}$"
 PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
 
+
+# Function mostly used in other features
+
 # Validate username format
 def validate_username(username: str):
     if not re.match(USERNAME_REGEX, username):
@@ -31,6 +34,7 @@ def validate_password(password: str):
         )
 
 
+# User registration
 @router.post("/register")
 def register_user(request: UserBase, db: Session = Depends(get_db)):
     # Validate username format
@@ -51,6 +55,7 @@ def register_user(request: UserBase, db: Session = Depends(get_db)):
     return {"id": new_user.id, "username": new_user.username}
 
 
+#User login
 @router.post("/login", response_model=TokenResponse)
 def login(
     request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)

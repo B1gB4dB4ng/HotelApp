@@ -20,6 +20,10 @@ class UserDisplay(BaseModel):
     class Config:
         from_attributes = True
 
+class UpdateUserResponse(BaseModel):
+    message: str
+    user: UserDisplay
+
 
 class TokenResponse(BaseModel):
     access_token: str

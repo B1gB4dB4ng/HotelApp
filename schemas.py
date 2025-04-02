@@ -139,7 +139,7 @@ class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
     booking_id: int
-    rating: condecimal(max_digits=2, decimal_places=1)
+    rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     created_at: date
 
@@ -149,7 +149,6 @@ class ReviewShow(ReviewBase):
 
     class Config:
         from_attributes = True
-
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

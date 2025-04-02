@@ -4,13 +4,17 @@ from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
 from schemas import ReviewBase, ReviewShow
 from db import db_review
+from typing import List
 from datetime import date
+from auth.oauth2 import get_current_user
 
 
 router = APIRouter(
     prefix="/review",
     tags=["Review"]
 )
+#-------------------------------------------------------------------------------------------------
+# submiting a review
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
 def submit_review(request: ReviewBase, db: Session = Depends(get_db)):
@@ -48,3 +52,25 @@ def submit_review(request: ReviewBase, db: Session = Depends(get_db)):
 
     # All validations passed → create the review
     return db_review.create_review(db, request)
+
+#-------------------------------------------------------------------------------------------------
+# getting all reviews and ratings for specific user id
+# so if user logged in as an admin user , can pass any user_id as path parameter to view all reviews and ratings for that user_id
+# and normal users just pass their user_id to view just thier reviews and ratings
+@router.get("/my-reviews/{user_id}", response_model=List[ReviewShow], summary="ADMIN / Get bookings by User ID",
+)
+def get_my_reviews(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user)
+):
+    # to Check if the logged-in user is admin or user_id that is passed as a path parameter matches the requested user_id
+    if current_user.is_superuser or current_user.id == user_id:
+        return db_review.get_all_reviews_by_user(db, user_id)
+    else :
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to view other users' reviews."
+        )
+#-------------------------------------------------------------------------------------------------
+

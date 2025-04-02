@@ -14,7 +14,6 @@ router = APIRouter(prefix="/user", tags=["user"])
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{3,}$"
 PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
 
-
 # Function mostly used in other features
 
 # Validate username format
@@ -34,6 +33,8 @@ def validate_password(password: str):
         )
 
 
+#--- User's functions ---
+
 # User registration
 @router.post("/register")
 def register_user(request: UserBase, db: Session = Depends(get_db)):
@@ -43,11 +44,28 @@ def register_user(request: UserBase, db: Session = Depends(get_db)):
     # Validate password format
     validate_password(request.password)
 
+
     # Check if the username already exists in the database
     existing_user = db_user.get_user_by_username(db, request.username)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken."
+        )
+    
+    # Check if email is already in use by another user
+    existing_email_user = db_user.get_user_by_email(db, request.email)
+    if existing_email_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The email is already taken by another user.",
+        )
+    
+    # Check if phone is already in use by another user
+    existing_phone_user = db_user.get_user_by_phone(db, request.phone_number)
+    if existing_phone_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number is already taken.",
         )
 
     # Create user if validation passes
@@ -100,19 +118,28 @@ def update_user(
     # Validate password format
     validate_password(request.password)
 
+
     # Check if the username already exists in the database
     existing_user = db_user.get_user_by_username(db, request.username)
-    if existing_user and existing_user.id != auth_user.id:
+    if existing_user and existing_user.id != auth_user.id and not user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Username is already taken."
         )
     
     # Check if email is already in use by another user
     existing_email_user = db_user.get_user_by_email(db, request.email)
-    if existing_email_user and existing_email_user.id != auth_user.id:
+    if existing_email_user and existing_email_user.id != auth_user.id and not user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The email is already taken by another user.",
+        )
+    
+    # Check if phone is already in use by another user
+    existing_phone_user = db_user.get_user_by_phone(db, request.phone_number)
+    if existing_phone_user and existing_phone_user.id != auth_user.id and not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number is already taken.",
         )
 
 

@@ -23,6 +23,9 @@ def get_user_by_username(db: Session, username: str):
 def get_user_by_email(db: Session, user_email: str):
     return db.query(Dbuser).filter(Dbuser.email == user_email).first()
 
+def get_user_by_phone(db: Session, user_phone: str):
+    return db.query(Dbuser).filter(Dbuser.phone_number == user_phone).first()
+
 #User Update
 def update_user(db: Session, username: str, request: UserBase):
     user = db.query(Dbuser).filter(Dbuser.username == username).first()

@@ -46,8 +46,6 @@ def get_review_by_review_id(db: Session, review_id: int):
 #------------------------------------------------------------------------------------------
 def get_filtered_reviews(
     db: Session,
-    current_user_id: int,
-    is_superuser: bool,
     user_id: Optional[int] = None,
     hotel_id: Optional[int] = None,
     booking_id: Optional[int] = None,
@@ -56,10 +54,7 @@ def get_filtered_reviews(
 ) -> List[Dbreview]:
     query = db.query(Dbreview)
 
-    # 🔒 Restrict regular users
-    if not is_superuser:
-        query = query.filter(Dbreview.user_id == current_user_id)
-    elif user_id is not None:
+    if user_id is not None:
         query = query.filter(Dbreview.user_id == user_id)
 
     if hotel_id is not None:
@@ -99,3 +94,12 @@ def review_exists_for_user_and_booking(db: Session, user_id: int, booking_id: in
         Dbreview.user_id == user_id,
         Dbreview.booking_id == booking_id
     ).first() is not None
+def booking_belongs_to_user(db: Session, user_id: int, booking_id: int) -> bool:
+    from db.models import Dbbooking
+    return db.query(Dbbooking).filter(
+        Dbbooking.id == booking_id,
+        Dbbooking.user_id == user_id
+    ).first() is not None
+
+
+

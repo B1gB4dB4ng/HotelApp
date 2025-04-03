@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Query
+from fastapi import APIRouter, Depends, status, HTTPException, Query,Body
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow
+from schemas import ReviewBase, ReviewShow, ReviewUpdate
 from db import db_review
 from typing import List, Optional
 from datetime import date
@@ -138,3 +138,66 @@ def filter_reviews(
         raise HTTPException(status_code=404, detail="There are no reviews matching your filters.")
 
     return reviews
+
+#-------------------------------------------------------------------------------------------------
+# edit review
+@router.put("/edit", response_model=ReviewShow)
+def edit_review(
+    user_id: int = Query(..., gt=0, description="User ID must be a positive integer"),
+    review_id: int = Query(..., gt=0, description="Review ID must be a positive integer"),
+    request: ReviewUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    # Check if user exists
+    if not db_review.user_exists(db, user_id):
+        raise HTTPException(status_code=404, detail=f"User with ID {user_id} does not exist.")
+
+    # Fetch the review
+    review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found.")
+
+    # Make sure the review belongs to the given user_id 
+    if review.user_id != user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given review_id does not belong to the provided user_id.",
+        )
+
+    # Only admin or the owner can edit
+    if not current_user.is_superuser and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="You are not allowed to edit this review.")
+
+    # Perform the update
+    updated_review = db_review.update_review_by_id(
+        db=db,
+        review_id=review_id,
+        new_rating=request.rating,
+        new_comment=request.comment,
+    )
+
+    if not updated_review:
+        raise HTTPException(status_code=500, detail="Failed to update review.")
+
+    return updated_review
+
+
+#-------------------------------------------------------------------------------------------------
+# delete review (soft delete)
+@router.delete("/delete")
+def delete_review(
+    review_id: int = Query(..., gt=0, description="Review ID must be a positive integer"),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    # 🔐 Only admin can delete reviews
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Only admins can delete reviews.")
+
+    # ✅ Perform soft delete
+    review = db_review.soft_delete_review_by_id(db, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found.")
+
+    return {"detail": f"Review with ID {review_id} soft deleted successfully."}

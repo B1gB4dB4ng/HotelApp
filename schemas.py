@@ -134,7 +134,7 @@ class PaymentShow(PaymentBase):
     class Config:
         from_attributes = True
 
-
+#----------------------||Review's schemas||----------------------
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
@@ -142,6 +142,7 @@ class ReviewBase(BaseModel):
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     created_at: date
+    status: Literal["pending", "approved", "rejected"] = "pending"
 
 
 class ReviewShow(ReviewBase):
@@ -149,6 +150,17 @@ class ReviewShow(ReviewBase):
 
     class Config:
         from_attributes = True
+
+
+# models.py or schemas.py
+class ReviewUpdate(BaseModel):
+    rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
+    comment: Optional[str] = None
+
+#---------------------------------------------------------------------
+
+
+
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

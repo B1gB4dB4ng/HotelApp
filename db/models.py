@@ -152,7 +152,7 @@ class Dbreview(Base):
     rating = Column(DECIMAL(2, 1), nullable=False)
     comment = Column(String, nullable=True)
     created_at = Column(Date, default=func.now(), nullable=False)
-
+    status = Column(String, nullable=False, default="pending") 
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
     booking = relationship("Dbbooking", back_populates="review")  # Changed to singular

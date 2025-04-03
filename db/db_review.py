@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.models import Dbreview 
-from schemas import ReviewBase
+from schemas import ReviewBase, ReviewUpdate
 from sqlalchemy import func
 from db.models import Dbreview, Dbhotel, Dbuser
 from typing import Optional, List
@@ -101,5 +101,31 @@ def booking_belongs_to_user(db: Session, user_id: int, booking_id: int) -> bool:
         Dbbooking.user_id == user_id
     ).first() is not None
 
+#------------------------------------------------------------------------------------------
+def update_review_by_id(
+    db: Session, review_id: int, new_rating: Optional[float], new_comment: Optional[str]
+) -> Dbreview:
+    review_query = db.query(Dbreview).filter(Dbreview.id == review_id)
 
+    review = review_query.first()
+    if not review:
+        return None
+
+    update_data = {}
+    if new_rating is not None:
+        update_data["rating"] = new_rating
+    if new_comment is not None:
+        update_data["comment"] = new_comment
+
+    review_query.update(update_data)
+    db.commit()
+    return review_query.first()
+
+#------------------------------------------------------------------------------------------
+def soft_delete_review_by_id(db: Session, review_id: int):
+    review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
+    if review:
+        review.status = "deleted"
+        db.commit()
+    return review
 

@@ -44,8 +44,23 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
 def get_hotels(
     search_term: Optional[str] = None,
     location: Optional[str] = Query(None, min_length=1),
+    is_approved: Optional[bool] = None,
     db: Session = Depends(get_db),
+    #user: Dbuser = Depends(get_current_user), 
 ):
+ 
+    # Check if user request is_approved
+    if is_approved is not None:
+        if not user or not user.is_superuser:
+            hotel_owner = db_hotel.query(db_hotel).filter(db_hotel.Dbhotel.owner_id == user.id).first()
+            if not hotel_owner:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not authorized to filter by approval status."
+                )
+               
+
+
     # Use the COMBINED function (from db_hotel.py)
     return db_hotel.combined_search_filter(
         db,

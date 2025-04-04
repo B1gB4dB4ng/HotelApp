@@ -1,7 +1,7 @@
 from threading import Thread
 from fastapi import FastAPI
 from auth import authentication
-from routers import hotel, user, booking, room
+from routers import hotel, user, booking, review, room
 from db import models
 from db.database import engine
 from task.background_tasks import update_room_status_periodically
@@ -12,6 +12,7 @@ app.include_router(user.router)
 app.include_router(hotel.router)
 app.include_router(room.router)
 app.include_router(booking.router)
+app.include_router(review.router)
 
 
 @app.get("/")

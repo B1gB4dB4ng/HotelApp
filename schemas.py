@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import re
 from typing import Annotated, Literal, Optional
 from pydantic import (
-    BaseModel,
+    BaseModel,  condecimal,
     EmailStr,
     StringConstraints,
     field_serializer,
@@ -199,6 +199,17 @@ class ReviewShow(ReviewBase):
 
     class Config:
         from_attributes = True
+
+
+# models.py or schemas.py
+class ReviewUpdate(BaseModel):
+    rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
+    comment: Optional[str] = None
+
+#---------------------------------------------------------------------
+
+
+
 
 #-----------------------------------------------------------
 

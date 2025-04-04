@@ -19,13 +19,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 def create_access_token(user: Dbuser, expires_delta: timedelta | None = None) -> str:
-    ### Creates JWT token with user ID
-    to_encode = {"sub": str(user.id)}  # Make sure user is a Dbuser object
+    to_encode = {
+        "sub": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "token_version": user.token_version,  # Include version
+        "fresh": True,
+    }
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
-
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -59,6 +63,11 @@ def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+    if payload.get("token_version") != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token revoked due to credential change",
         )
 
     return user  # Return full user object

@@ -32,5 +32,13 @@ def submit_room(
         raise HTTPException(
             status_code=403, detail="Not authorized to update this hotel"
         )
+    
+    # Check if the room number exists in this hotel
+    existing_room = db_room.get_room_by_number(db, request.room_number, hotel_id)
+    if existing_room:
+        raise HTTPException(
+            status_code=400, detail="This room already exists in this hotel."
+        )
 
     return db_room.create_room(db, request, hotel_id)  # Now it works
+

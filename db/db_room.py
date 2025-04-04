@@ -7,11 +7,8 @@ from typing import Optional, List, Tuple
 from fastapi import HTTPException, status
 from datetime import date 
 
-
-
-# Create room
+# Create a Room
 def create_room(db: Session, request: RoomCreate) -> Dbroom:
-    # Check for duplicate room number in the same hotel
     existing_room = db.query(Dbroom).filter(
         Dbroom.room_number == request.room_number,
         Dbroom.hotel_id == request.hotel_id,
@@ -37,12 +34,16 @@ def create_room(db: Session, request: RoomCreate) -> Dbroom:
             detail=f"Failed to create room: {str(e)}"
         )
 
+# Search by a Room Number and a Hotel it
+def get_room_by_number(db: Session, room_num: int, hotel_id: int):
+    return db.query(Dbroom).filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id).first()
+
 # Delete a Room
 def delete_room(db: Session, room_id: int, hotel_id: int):
     room = db.query(Dbroom).filter(
         Dbroom.id == room_id,
         Dbroom.hotel_id == hotel_id,
-        Dbroom.is_active == IsActive.active  # Only delete active rooms
+        Dbroom.is_active == IsActive.active
     ).first()
     if not room:
         return None
@@ -50,32 +51,22 @@ def delete_room(db: Session, room_id: int, hotel_id: int):
     db.commit()
     return room
 
-
 # Update a Room
 def update_room(db: Session, room_id: int, request: RoomUpdate):
     room = db.query(Dbroom).filter(Dbroom.id == room_id).first()
     if not room:
         return None
-    
-    # Update only provided fields
     for field, value in request.dict(exclude_unset=True).items():
         setattr(room, field, value)
-    
     db.commit()
     db.refresh(room)
     return room
 
+#############
 def get_room(db: Session, room_id: int):
     return db.query(Dbroom).filter(Dbroom.id == room_id).first()
 
-# Filter a Room
-def get_rooms_by_hotel(
-    db: Session,
-    hotel_id: int,
-    skip: int = 0,
-    limit: int = 100,
-    status: Optional[str] = None,  # Filter by status (e.g., "available")
-):
+def get_rooms_by_hotel(db: Session, hotel_id: int, skip: int = 0, limit: int = 100, status: Optional[str] = None):
     query = db.query(Dbroom).filter(
         Dbroom.hotel_id == hotel_id,
         Dbroom.is_active == IsActive.active
@@ -84,8 +75,7 @@ def get_rooms_by_hotel(
         query = query.filter(Dbroom.status == status)
     return query.offset(skip).limit(limit).all()
 
-
-# Room Search functionality
+# Search a Room Using Different Filters
 def advanced_room_search(
     db: Session,
     search_term: Optional[str] = None,
@@ -99,7 +89,6 @@ def advanced_room_search(
 ) -> List[Dbroom]:
     query = db.query(Dbroom).filter(Dbroom.is_active == IsActive.active)
 
-    # Text search
     if search_term:
         pattern = f"%{search_term}%"
         query = query.filter(
@@ -109,7 +98,6 @@ def advanced_room_search(
             )
         )
 
-    # Filter by amenities
     if wifi is not None:
         query = query.filter(Dbroom.wifi == wifi)
     if air_conditioner is not None:
@@ -117,13 +105,11 @@ def advanced_room_search(
     if tv is not None:
         query = query.filter(Dbroom.tv == tv)
 
-    # Filter by price
     if min_price is not None:
         query = query.filter(Dbroom.price_per_night >= min_price)
     if max_price is not None:
         query = query.filter(Dbroom.price_per_night <= max_price)
 
-    # Exclude already booked rooms during the selected date range
     if check_in_date and check_out_date:
         overlapping_room_ids = [
             booking.room_id

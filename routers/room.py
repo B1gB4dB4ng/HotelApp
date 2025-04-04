@@ -2,22 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_room, db_hotel
-from db.models import Dbuser, Dbhotel, Dbroom
+from db.models import Dbuser, Dbhotel
 from schemas import RoomBase, RoomDisplay, RoomUpdate, RoomCreate
-# from schemas import HotelSearch
 from decimal import Decimal
 from typing import Optional, List
 from auth.oauth2 import get_current_user
 from datetime import date
 
-
 router = APIRouter(prefix="/room", tags=["Room"])
 
 
+# Submit a new room
 @router.post("/submit/{hotel_id}", response_model=RoomDisplay)
 def submit_room(
     hotel_id: int,
-    request: RoomBase,  # Keep as RoomBase for input
+    request: RoomBase,
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
@@ -29,16 +28,14 @@ def submit_room(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     try:
-        # Convert RoomBase to RoomCreate with default is_active
         create_data = request.dict()
         create_data.update({
             'hotel_id': hotel_id,
-            'is_active': create_data.get('is_active', 'active')  # Use provided or default
+            'is_active': create_data.get('is_active', 'active')
         })
         create_request = RoomCreate(**create_data)
-        
-        created_room = db_room.create_room(db, create_request)
-        return created_room
+
+        return db_room.create_room(db, create_request)
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -47,6 +44,8 @@ def submit_room(
             detail=f"Invalid room data: {str(e)}"
         )
 
+
+# Soft-delete a room
 @router.delete("/{hotel_id}/{room_id}", summary="Soft-delete a room")
 def delete_room(
     hotel_id: int,
@@ -54,7 +53,6 @@ def delete_room(
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
-    # Authorization: Only hotel owner or admin can delete
     hotel = db_hotel.get_hotel(db, hotel_id)
     if not hotel or (hotel.owner_id != user.id and not user.is_superuser):
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -65,6 +63,7 @@ def delete_room(
     return {"message": f"Room {room_id} deleted"}
 
 
+# Update a room
 @router.put("/{room_id}", response_model=RoomDisplay)
 def update_room(
     room_id: int,
@@ -72,24 +71,22 @@ def update_room(
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
-    # First get the room to check hotel ownership
     room = db_room.get_room(db, room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Verify user owns the hotel or is admin
+
     hotel = db.query(Dbhotel).filter(Dbhotel.id == room.hotel_id).first()
     if not hotel or (hotel.owner_id != user.id and not user.is_superuser):
         raise HTTPException(status_code=403, detail="Not authorized")
-    
-    # Perform update
+
     updated_room = db_room.update_room(db, room_id, request)
     if not updated_room:
         raise HTTPException(status_code=400, detail="Update failed")
-    
+
     return updated_room
 
-# Room Search
+
+# Advanced room search with filters and availability
 @router.get("/search", response_model=List[RoomDisplay])
 def search_rooms(
     search_term: Optional[str] = None,
@@ -115,6 +112,7 @@ def search_rooms(
     )
 
 
+#  Get all rooms for a hotel
 @router.get("/{hotel_id}", response_model=List[RoomDisplay], summary="List rooms in a hotel")
 def list_rooms(
     hotel_id: int,
@@ -125,5 +123,3 @@ def list_rooms(
     if not rooms:
         raise HTTPException(status_code=404, detail="No rooms found")
     return rooms
-
-

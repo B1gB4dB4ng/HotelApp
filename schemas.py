@@ -2,6 +2,8 @@ from decimal import Decimal
 from datetime import date, timedelta
 import re
 from typing import Annotated, Literal, Optional, List
+from pydantic import condecimal
+
 from pydantic import (
     BaseModel,
     EmailStr,

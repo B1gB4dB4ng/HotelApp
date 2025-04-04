@@ -45,24 +45,6 @@ def submit_room(
         )
 
 
-# Soft-delete a room
-@router.delete("/{hotel_id}/{room_id}", summary="Soft-delete a room")
-def delete_room(
-    hotel_id: int,
-    room_id: int,
-    db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),
-):
-    hotel = db_hotel.get_hotel(db, hotel_id)
-    if not hotel or (hotel.owner_id != user.id and not user.is_superuser):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    deleted_room = db_room.delete_room(db, room_id, hotel_id)
-    if not deleted_room:
-        raise HTTPException(status_code=404, detail="Room not found or already deleted")
-    return {"message": f"Room {room_id} deleted"}
-
-
 # Update a room
 @router.put("/{room_id}", response_model=RoomDisplay)
 def update_room(
@@ -123,3 +105,22 @@ def list_rooms(
     if not rooms:
         raise HTTPException(status_code=404, detail="No rooms found")
     return rooms
+
+
+# Soft-delete a room
+@router.delete("/{hotel_id}/{room_id}", summary="Soft-delete a room")
+def delete_room(
+    hotel_id: int,
+    room_id: int,
+    db: Session = Depends(get_db),
+    user: Dbuser = Depends(get_current_user),
+):
+    hotel = db_hotel.get_hotel(db, hotel_id)
+    if not hotel or (hotel.owner_id != user.id and not user.is_superuser):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    deleted_room = db_room.delete_room(db, room_id, hotel_id)
+    if not deleted_room:
+        raise HTTPException(status_code=404, detail="Room not found or already deleted")
+    return {"message": f"Room {room_id} deleted"}
+

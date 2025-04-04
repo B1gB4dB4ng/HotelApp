@@ -226,6 +226,12 @@ class ReviewShow(ReviewBase):
         from_attributes = True
 
 
+# models.py or schemas.py
+class ReviewUpdate(BaseModel):
+    rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
+    comment: Optional[str] = None
+
+
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None
     min_price: Optional[Decimal] = None

@@ -18,11 +18,12 @@ class Dbuser(Base):
     __tablename__ = "user"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)  # Long enough for bcrypt
     is_superuser = Column(Boolean, default=False)
-    phone_number = Column(String, nullable=True)
+    phone_number = Column(String(15), unique=True, nullable=False)  # +1234567890123
+    token_version = Column(Integer, default=0)
 
     hotels = relationship("Dbhotel", back_populates="owner")
     bookings = relationship("Dbbooking", back_populates="user")

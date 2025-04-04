@@ -51,6 +51,7 @@ def get_filtered_reviews(
     booking_id: Optional[int] = None,
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
+    status: Optional[str] = None ,
 ) -> List[Dbreview]:
     query = db.query(Dbreview)
 
@@ -68,6 +69,9 @@ def get_filtered_reviews(
 
     if max_rating is not None:
         query = query.filter(Dbreview.rating <= max_rating)
+    
+    if status is not None:
+        query = query.filter(Dbreview.status == status)
 
     return query.all()
 

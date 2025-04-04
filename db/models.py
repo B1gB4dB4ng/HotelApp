@@ -12,6 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
+from sqlalchemy import Enum as SqlEnum
 
 
 class Dbuser(Base):
@@ -60,6 +61,10 @@ class Dbhotel(Base):
     owner = relationship("Dbuser", back_populates="hotels")
 
 
+class IsRoomStatus(PyEnum):
+    available = "available"
+    reserved = "reserved"
+    unavailable = "unavailable"
 
 
 
@@ -136,8 +141,11 @@ class Dbpayment(Base):
 
     booking = relationship("Dbbooking", back_populates="payment")  # Changed to singular
     user = relationship("Dbuser", back_populates="payments")  # Updated
-
-
+#---------------------------------------------------------------------
+class IsReviewStatus(PyEnum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
 
 class Dbreview(Base):
     __tablename__ = "review"

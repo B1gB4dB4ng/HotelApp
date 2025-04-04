@@ -3,11 +3,12 @@ from datetime import date, timedelta
 import re
 from typing import Annotated, Literal, Optional
 from pydantic import (
-    BaseModel,  condecimal,
+    BaseModel,
     EmailStr,
     StringConstraints,
     field_serializer,
     field_validator,
+    condecimal
 )
 from enum import Enum
 
@@ -177,6 +178,8 @@ class PaymentShow(PaymentBase):
         from_attributes = True
 
 
+
+#-----------------------------------------------------------
 class IsReviewStatus(str, Enum):
     pending = "pending"
     confirmed = "confirmed"
@@ -196,6 +199,8 @@ class ReviewShow(ReviewBase):
 
     class Config:
         from_attributes = True
+
+#-----------------------------------------------------------
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

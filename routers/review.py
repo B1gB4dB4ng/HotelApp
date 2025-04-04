@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow
+from schemas import ReviewBase, ReviewShow, IsReviewStatus
 from db import db_review
 from typing import List, Optional
 from datetime import date
@@ -81,13 +81,29 @@ def validate_rating(value: Optional[float], name: str):
 @router.get("/", response_model=List[ReviewShow])
 def filter_reviews(
     db: Session = Depends(get_db),
-    #current_user: Dbuser = Depends(get_current_user),
-    user_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
-    hotel_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
-    booking_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
-    min_rating: Optional[float] = Query(None),
-    max_rating: Optional[float] = Query(None),
+    user_id: Optional[int] = Query(
+        None, gt=0, description="Filter by user ID (must be a positive integer)"
+    ),
+    hotel_id: Optional[int] = Query(
+        None, gt=0, description="Filter by hotel ID (must be a positive integer)"
+    ),
+    booking_id: Optional[int] = Query(
+        None, gt=0, description="Filter by booking ID (must be a positive integer)"
+    ),
+    min_rating: Optional[float] = Query(
+        None,
+        description="Minimum rating (from 1.0 to 5.0, with at most one decimal place like 3.5, 4.0, etc.)"
+    ),
+    max_rating: Optional[float] = Query(
+        None,
+        description="Maximum rating (from 1.0 to 5.0, with at most one decimal place like 3.5, 4.0, etc.)"
+    ),
+    status: IsReviewStatus = Query(
+        default=IsReviewStatus.pending,
+        description="Filter by review status (pending, confirmed, or rejected)"
+    ),
 ):
+
     # Existence checks
     if user_id is not None and not db_review.user_exists(db, user_id):
         raise HTTPException(status_code=404, detail=f"User with ID {user_id} does not exist.")
@@ -131,6 +147,7 @@ def filter_reviews(
         booking_id=booking_id,
         min_rating=min_rating,
         max_rating=max_rating,
+        status=status, 
     )
 
     # No match

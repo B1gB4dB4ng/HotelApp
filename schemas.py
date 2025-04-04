@@ -1,24 +1,66 @@
 from decimal import Decimal
 from datetime import date, timedelta
-from typing import Literal, Optional
-from pydantic import BaseModel, field_serializer
+import re
+from typing import Annotated, Literal, Optional
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    StringConstraints,
+    field_serializer,
+    field_validator,
+)
 from enum import Enum
 
 
 class UserBase(BaseModel):
-    username: str
-    email: str
-    password: str
-    phone_number: Optional[str]  # Added phone_number
+    username: Annotated[str, StringConstraints(min_length=3, max_length=50)]
+    email: EmailStr
+    password: Annotated[str, StringConstraints(min_length=8)]
+    phone_number: Annotated[str, StringConstraints(min_length=10, max_length=15)]
+
+    @field_validator("phone_number")
+    def validate_phone(cls, v):
+        if not re.match(r"^\+?[0-9\s\-]+$", v):  # Basic phone format check
+            raise ValueError("Invalid phone number format")
+        return v
 
 
 class UserDisplay(BaseModel):
-    username: str
-    email: str
-    phone_number: Optional[str]  # Added phone_number
+    username: Annotated[str, StringConstraints(min_length=3, max_length=50)]
+    email: EmailStr
+    phone_number: Annotated[str, StringConstraints(min_length=10, max_length=15)]
 
     class Config:
         from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_superuser: Optional[bool] = None  # Remove default=False
+    current_password: Optional[str] = None
+
+    @field_validator("current_password")
+    def validate_current_password_when_needed(cls, v, info):
+        """Validate current_password only when sensitive fields are being changed"""
+        data = info.data
+        sensitive_fields = ["username", "email", "password"]
+
+        if any(field in data and data[field] is not None for field in sensitive_fields):
+            if not v:
+                raise ValueError(
+                    "Current password required for security-sensitive changes"
+                )
+        return v
+
+
+class UpdateUserResponse(BaseModel):
+    message: str
+    user: UserDisplay
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -61,7 +103,7 @@ class RoomBase(BaseModel):
     room_number: str
     description: Optional[str]
     price_per_night: Decimal
-    #is_active: Literal["inactive", "active", "deleted"]
+    is_active: Literal["inactive", "active", "deleted"] = "active"
     wifi: bool = False
     air_conditioner: bool = False
     tv: bool = False

@@ -5,7 +5,8 @@ from schemas import ReviewBase, ReviewUpdate
 from sqlalchemy import func
 from db.models import Dbreview, Dbhotel, Dbuser
 from typing import Optional, List
-
+#------------------------------------------------------------------------------------------
+# submit a review
 def create_review(db: Session, request: ReviewBase):
     # Step 1: Save the review
     db_review = Dbreview(
@@ -40,10 +41,12 @@ def create_review(db: Session, request: ReviewBase):
 #     return db.query(Dbreview).filter(Dbreview.user_id == user_id).all()
 
 #------------------------------------------------------------------------------------------
+#get review by id
 def get_review_by_review_id(db: Session, review_id: int):
     return db.query(Dbreview).filter(Dbreview.id== review_id).first()
 
 #------------------------------------------------------------------------------------------
+# get reviewa by filtering
 def get_filtered_reviews(
     db: Session,
     user_id: Optional[int] = None,
@@ -102,6 +105,7 @@ def booking_belongs_to_user(db: Session, user_id: int, booking_id: int) -> bool:
     ).first() is not None
 
 #------------------------------------------------------------------------------------------
+#update a review
 def update_review_by_id(
     db: Session, review_id: int, new_rating: Optional[float], new_comment: Optional[str]
 ) -> Dbreview:
@@ -122,6 +126,7 @@ def update_review_by_id(
     return review_query.first()
 
 #------------------------------------------------------------------------------------------
+#delet a review
 def soft_delete_review_by_id(db: Session, review_id: int):
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if review:

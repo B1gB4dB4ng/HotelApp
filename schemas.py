@@ -201,14 +201,21 @@ class PaymentShow(PaymentBase):
 
 # Review
 
+
+#-----------------------------------------------------------
+class IsReviewStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
     booking_id: int
-    rating: Decimal
+    rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     created_at: date
-
+    status: IsReviewStatus = IsReviewStatus.pending
 
 class ReviewShow(ReviewBase):
     id: int
@@ -216,7 +223,6 @@ class ReviewShow(ReviewBase):
     class Config:
         from_attributes = True
 
-# Hotel Search
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

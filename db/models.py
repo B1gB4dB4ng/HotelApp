@@ -16,6 +16,10 @@ from sqlalchemy import (
     Date,
     func,
 )
+from sqlalchemy.orm import relationship
+from enum import Enum as PyEnum
+from sqlalchemy import Enum as SqlEnum
+
 
 class Dbuser(Base):
     __tablename__ = "user"
@@ -67,6 +71,7 @@ class IsRoomStatus(PyEnum):
     available = "available"
     reserved = "booked"
     unavailable = "unavailable"
+
 
 
 class Dbroom(Base):
@@ -142,7 +147,11 @@ class Dbpayment(Base):
 
     booking = relationship("Dbbooking", back_populates="payment")  # Changed to singular
     user = relationship("Dbuser", back_populates="payments")  # Updated
-
+#---------------------------------------------------------------------
+class IsReviewStatus(PyEnum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
 
 class Dbreview(Base):
     __tablename__ = "review"
@@ -156,7 +165,11 @@ class Dbreview(Base):
     rating = Column(DECIMAL(2, 1), nullable=False)
     comment = Column(String, nullable=True)
     created_at = Column(Date, default=func.now(), nullable=False)
-    status = Column(String, nullable=True)
+    status = Column(
+        SqlEnum(IsReviewStatus, name="review_status"),  # ✅ using Python Enum here
+        default=IsReviewStatus.pending,
+        nullable=False
+    )  
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
     booking = relationship("Dbbooking", back_populates="review")  # Changed to singular

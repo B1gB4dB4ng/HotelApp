@@ -8,6 +8,7 @@ from pydantic import (
     StringConstraints,
     field_serializer,
     field_validator,
+    condecimal
 )
 from enum import Enum
 
@@ -176,7 +177,14 @@ class PaymentShow(PaymentBase):
     class Config:
         from_attributes = True
 
-#----------------------||Review's schemas||----------------------
+
+
+#-----------------------------------------------------------
+class IsReviewStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
@@ -184,8 +192,7 @@ class ReviewBase(BaseModel):
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     created_at: date
-    status: Literal["pending", "approved", "rejected"] = "pending"
-
+    status: IsReviewStatus = IsReviewStatus.pending
 
 class ReviewShow(ReviewBase):
     id: int
@@ -203,6 +210,8 @@ class ReviewUpdate(BaseModel):
 
 
 
+
+#-----------------------------------------------------------
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

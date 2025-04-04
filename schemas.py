@@ -177,6 +177,11 @@ class PaymentShow(PaymentBase):
         from_attributes = True
 
 
+class IsReviewStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
@@ -184,7 +189,7 @@ class ReviewBase(BaseModel):
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     created_at: date
-
+    status: IsReviewStatus = IsReviewStatus.pending
 
 class ReviewShow(ReviewBase):
     id: int

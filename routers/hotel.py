@@ -38,22 +38,22 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
 
 
 # Combine search and filter logic into one endpoint
-@router.get(
-    "/", description="Get filtered/searched hotels ", response_model=List[HotelDisplay]
-)
+@router.get("/", response_model=List[HotelDisplay])
 def get_hotels(
     search_term: Optional[str] = None,
     location: Optional[str] = Query(None, min_length=1),
+    min_rating: Optional[float] = Query(None, ge=1.0, le=5.0),
+    max_rating: Optional[float] = Query(None, ge=1.0, le=5.0),
     db: Session = Depends(get_db),
 ):
-               
-    # Use the COMBINED function (from db_hotel.py)
     return db_hotel.combined_search_filter(
-        db,
+        db=db,
         search_term=search_term,
         location=location.strip() if location else None,
-        skip=0,  # Hardcode or make optional
-        limit=100,  # Default limit
+        min_rating=min_rating,
+        max_rating=max_rating,
+        skip=0,
+        limit=100,
     )
 
 

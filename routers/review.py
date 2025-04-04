@@ -17,7 +17,7 @@ router = APIRouter(
 # submiting a review
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
-def submit_review(request: ReviewBase, db: Session = Depends(get_db)):
+def submit_review(request: ReviewBase, db: Session = Depends(get_db), current_user: Dbuser = Depends(get_current_user),):
     # Check if user exists
     user = db.query(Dbuser).filter(Dbuser.id == request.user_id).first()
     if not user:
@@ -81,7 +81,7 @@ def validate_rating(value: Optional[float], name: str):
 @router.get("/", response_model=List[ReviewShow])
 def filter_reviews(
     db: Session = Depends(get_db),
-    current_user: Dbuser = Depends(get_current_user),
+    #current_user: Dbuser = Depends(get_current_user),
     user_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
     hotel_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
     booking_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),

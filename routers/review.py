@@ -4,7 +4,7 @@ from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
 from schemas import ReviewBase, ReviewShow, ReviewUpdate
 from db import db_review
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import date
 from auth.oauth2 import get_current_user
 
@@ -87,6 +87,9 @@ def filter_reviews(
     booking_id: Optional[int] = Query(None, gt=0, description="Must be a positive integer"),
     min_rating: Optional[float] = Query(None),
     max_rating: Optional[float] = Query(None),
+    status: Optional[Literal["pending", "approved", "rejected"]] = Query(
+    None, description="Filter reviews by status(pending, approved, rejected)"
+    ),
 ):
     # Existence checks
     if user_id is not None and not db_review.user_exists(db, user_id):
@@ -191,11 +194,11 @@ def delete_review(
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    # 🔐 Only admin can delete reviews
+    # Only admin can delete reviews
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Only admins can delete reviews.")
 
-    # ✅ Perform soft delete
+    # Perform soft delete
     review = db_review.soft_delete_review_by_id(db, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")

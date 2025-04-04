@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm.session import Session
 from auth.oauth2 import create_access_token, get_current_user
 from db.database import get_db
 from schemas import TokenResponse, UserBase, UpdateUserResponse, UserDisplay, UserUpdate
@@ -162,3 +162,17 @@ async def update_user(
         )
 
     return response_data
+
+
+# get user by id
+@router.get("/{user_id}", response_model=UserDisplay)
+def get_user(id: int, 
+             db: Session = Depends(get_db),
+             current_user: Dbuser = Depends(get_current_user):
+    user = db_user.get_user(db, id)
+
+    if not current_user.user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to get users' list"
+        )
+

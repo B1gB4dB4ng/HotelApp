@@ -163,6 +163,7 @@ class BookingUpdate(BookingBase):
     )
     cancel_reason: Optional[str] = None  # Optional reason, can be filled when canceling
 
+#-----------------------------------------------------------
 
 class PaymentBase(BaseModel):
     booking_id: int
@@ -176,7 +177,6 @@ class PaymentShow(PaymentBase):
 
     class Config:
         from_attributes = True
-
 
 
 #-----------------------------------------------------------

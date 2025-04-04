@@ -164,6 +164,6 @@ def update_review_by_id(
 def soft_delete_review_by_id(db: Session, review_id: int):
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if review:
-        review.status = "deleted"
+        review.status = "rejected"
         db.commit()
     return review

@@ -1,8 +1,8 @@
 from decimal import Decimal
 from datetime import date, timedelta
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from pydantic import BaseModel
-from pydantic import BaseModel, field_serializer, validator
+from pydantic import BaseModel, field_serializer, validator, Field  
 from enum import Enum
 
 class UserBase(BaseModel):
@@ -59,35 +59,41 @@ class UpdateHotelResponse(BaseModel):
 
 class RoomBase(BaseModel):
     room_number: str
-    description: Optional[str]
+    description: Optional[str] = None
     price_per_night: Decimal
-    #is_active: Literal["inactive", "active", "deleted"]
     wifi: bool = False
     air_conditioner: bool = False
     tv: bool = False
     status: Literal["available", "booked"] = "available"
     bed_count: int
 
-
-class RoomDisplay(BaseModel):
-    id: int
+class RoomCreate(RoomBase):
     hotel_id: int
-    room_number: str
-    description: Optional[str]
-    price_per_night: Decimal
-    is_active: str
-    wifi: bool
-    air_conditioner: bool
-    tv: bool
-    status: str
-    bed_count: int
+    is_active: Literal["inactive", "active", "deleted"] = Field(
+        default="active",
+        description="Room status: 'active', 'inactive', or 'deleted'",
+        example="active"
+    )
 
-    class Config:
-        from_attributes = True
+#class RoomDisplay(BaseModel):
+#    id: int
+ #   hotel_id: int
+#    room_number: str
+#    description: Optional[str]
+#    price_per_night: Decimal
+#    is_active: str
+ #   wifi: bool
+#    air_conditioner: bool
+ #   tv: bool
+  #  status: str
+ #   bed_count: int
 
-    @field_serializer("is_active", "status")  # ✅ Convert Enum to string
-    def serialize_enum(value: Enum) -> str:
-        return value.value if isinstance(value, Enum) else value
+#    class Config:
+#        from_attributes = True
+
+#    @field_serializer("is_active", "status")  # ✅ Convert Enum to string
+ #   def serialize_enum(value: Enum) -> str:
+     #   return value.value if isinstance(value, Enum) else value
 
 
 class BookingBase(BaseModel):
@@ -158,15 +164,7 @@ class HotelSearch(BaseModel):
     location: Optional[str] = None
 
 
-class RoomCreate(BaseModel):
-    hotel_id: int  # Required to associate room with a hotel
-    room_number: str
-    description: Optional[str] = None
-    price_per_night: Decimal
-    wifi: bool = False
-    air_conditioner: bool = False
-    tv: bool = False
-    bed_count: int
+
 
 
 class RoomUpdate(BaseModel):
@@ -177,4 +175,30 @@ class RoomUpdate(BaseModel):
     tv: Optional[bool] = None
     status: Optional[Literal["available", "booked", "unavailable"]] = None
     bed_count: Optional[int] = None
+    is_active: Optional[Literal["inactive", "active", "deleted"]] = "active" 
 
+# Room Search
+class RoomDisplay(BaseModel):
+    id: int
+    hotel_id: int
+    room_number: str
+    description: Optional[str]
+    price_per_night: Decimal
+    is_active: str
+    wifi: bool
+    air_conditioner: bool
+    tv: bool
+    status: str
+    bed_count: int
+
+    class Config:
+        from_attributes = True
+
+class RoomSearch(BaseModel):
+    search_term: Optional[str] = None
+    amenities: Optional[List[str]] = Field(None, example=["wifi", "air_conditioner"])
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    check_in: date
+    check_out: date
+    location: Optional[str] = None

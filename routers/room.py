@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_room, db_hotel
 from db.models import Dbuser, Dbhotel, Dbroom
-from schemas import RoomBase, RoomDisplay, RoomUpdate
+from schemas import RoomBase, RoomDisplay, RoomUpdate, RoomCreate
 # from schemas import HotelSearch
 from decimal import Decimal
 from typing import Optional, List
 from auth.oauth2 import get_current_user
+from datetime import date
 
 
 router = APIRouter(prefix="/room", tags=["Room"])
@@ -16,26 +17,35 @@ router = APIRouter(prefix="/room", tags=["Room"])
 @router.post("/submit/{hotel_id}", response_model=RoomDisplay)
 def submit_room(
     hotel_id: int,
-    request: RoomBase,
+    request: RoomBase,  # Keep as RoomBase for input
     db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),  # Extract logged-in user
+    user: Dbuser = Depends(get_current_user),
 ):
-    """
-    Room can be created for the hotel of authenticated user only.
-    The owner ID is automatically assigned from the logged-in user.
-    """
     hotel = db_hotel.get_hotel(db, hotel_id)
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
 
     if hotel.owner_id != user.id and not user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    try:
+        # Convert RoomBase to RoomCreate with default is_active
+        create_data = request.dict()
+        create_data.update({
+            'hotel_id': hotel_id,
+            'is_active': create_data.get('is_active', 'active')  # Use provided or default
+        })
+        create_request = RoomCreate(**create_data)
+        
+        created_room = db_room.create_room(db, create_request)
+        return created_room
+    except HTTPException as e:
+        raise e
+    except Exception as e:
         raise HTTPException(
-            status_code=403, detail="Not authorized to update this hotel"
+            status_code=400,
+            detail=f"Invalid room data: {str(e)}"
         )
-
-    return db_room.create_room(db, request, hotel_id)  # Now it works
-
-
 
 @router.delete("/{hotel_id}/{room_id}", summary="Soft-delete a room")
 def delete_room(
@@ -55,7 +65,6 @@ def delete_room(
     return {"message": f"Room {room_id} deleted"}
 
 
-@router.put("/{room_id}", response_model=RoomDisplay)
 @router.put("/{room_id}", response_model=RoomDisplay)
 def update_room(
     room_id: int,
@@ -80,6 +89,31 @@ def update_room(
     
     return updated_room
 
+# Room Search
+@router.get("/search", response_model=List[RoomDisplay])
+def search_rooms(
+    search_term: Optional[str] = None,
+    wifi: Optional[bool] = None,
+    air_conditioner: Optional[bool] = None,
+    tv: Optional[bool] = None,
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
+    check_in_date: Optional[date] = None,
+    check_out_date: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    return db_room.advanced_room_search(
+        db=db,
+        search_term=search_term,
+        wifi=wifi,
+        air_conditioner=air_conditioner,
+        tv=tv,
+        min_price=min_price,
+        max_price=max_price,
+        check_in_date=check_in_date,
+        check_out_date=check_out_date,
+    )
+
 
 @router.get("/{hotel_id}", response_model=List[RoomDisplay], summary="List rooms in a hotel")
 def list_rooms(
@@ -91,3 +125,5 @@ def list_rooms(
     if not rooms:
         raise HTTPException(status_code=404, detail="No rooms found")
     return rooms
+
+

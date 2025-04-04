@@ -67,7 +67,6 @@ class IsRoomStatus(PyEnum):
     unavailable = "unavailable"
 
 
-
 class Dbroom(Base):
     __tablename__ = "room"
 
@@ -141,11 +140,15 @@ class Dbpayment(Base):
 
     booking = relationship("Dbbooking", back_populates="payment")  # Changed to singular
     user = relationship("Dbuser", back_populates="payments")  # Updated
-#---------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------
 class IsReviewStatus(PyEnum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+    deleted = "deleted"
+
 
 class Dbreview(Base):
     __tablename__ = "review"
@@ -162,8 +165,8 @@ class Dbreview(Base):
     status = Column(
         SqlEnum(IsReviewStatus, name="review_status"),  # ✅ using Python Enum here
         default=IsReviewStatus.pending,
-        nullable=False
-    )  
+        nullable=False,
+    )
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
     booking = relationship("Dbbooking", back_populates="review")  # Changed to singular

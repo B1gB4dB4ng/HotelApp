@@ -167,21 +167,6 @@ class BookingUpdate(BookingBase):
     cancel_reason: Optional[str] = None  # Optional reason, can be filled when canceling
 
 #-----------------------------------------------------------
-
-# class PaymentBase(BaseModel):
-#     booking_id: int
-#     amount: Decimal
-#     status: Literal["pending", "completed", "failed", "refunded"]
-#     payment_date: date
-
-
-# class PaymentShow(PaymentBase):
-#     id: int
-
-#     class Config:
-#         from_attributes = True
-
-
 from pydantic import BaseModel, Field, validator
 from decimal import Decimal
 from datetime import date, datetime
@@ -242,11 +227,6 @@ class PaymentBase(BaseModel):
                 total += digit
 
         return total % 10 == 0
-
-    def masked_card(self):
-        return f"{self.card_number[:4]}********{self.card_number[-4:]}"
-
-
 class PaymentShow(BaseModel):
     id: int
     booking_id: int
@@ -286,11 +266,6 @@ class ReviewUpdate(BaseModel):
     comment: Optional[str] = None
 
 #---------------------------------------------------------------------
-
-
-
-
-#-----------------------------------------------------------
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

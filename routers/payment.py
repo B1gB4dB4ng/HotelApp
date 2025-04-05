@@ -22,8 +22,6 @@ def make_payment_for_user(
 
     # Always successful payment
     payment_status = "completed"
-    masked= payment.masked_card()
-    print(f"✅ Payment status: {payment_status} | Card: {masked}")
 
     # Get booking and amount
     booking = db.query(Dbbooking).filter(Dbbooking.id == payment.booking_id).first()
@@ -39,7 +37,7 @@ def make_payment_for_user(
         db, payment, user_id=user_id, status=payment_status, amount=total_amount
     )
 
-    # Update booking status if payment successful
+    # Update booking status in booking table if payment successful
     if payment_status == "completed":
         booking.status = "confirmed"
         db.commit()

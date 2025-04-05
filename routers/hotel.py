@@ -118,3 +118,23 @@ def delete_hotel(
     delete_message = db_hotel.delete_hotel(db, id)
 
     return {"message": delete_message}  # Return success message
+
+
+# Admin approves hotel
+@router.put("/{hotel_id}/approve", response_model=HotelDisplay)
+def approve_hotel(
+    hotel_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user)
+):
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can approve hotels"
+        )
+    
+    hotel = db_hotel.get_hotel(db, hotel_id)
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    return db_hotel.approve_hotel_by_id(db, hotel_id)

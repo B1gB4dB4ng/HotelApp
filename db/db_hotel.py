@@ -95,3 +95,15 @@ def update_hotel(db: Session, id: int, request: HotelBase):
     db.commit()
     db.refresh(hotel)
     return hotel
+
+# approve hotel
+def approve_hotel_by_id(db: Session, id: int):
+    hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
+
+    if hotel.is_approved == False:
+        hotel.is_approved = True
+    else:
+        hotel.is_approved = False
+    db.commit()
+    db.refresh(hotel)
+    return hotel

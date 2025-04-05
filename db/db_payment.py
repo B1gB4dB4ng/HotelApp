@@ -1,16 +1,14 @@
 from sqlalchemy.orm import Session
-from db.models import Dbpayment, IsPaymentStatus
+from db.models import Dbpayment
 from schemas import PaymentBase
-from datetime import date
-from db.database import get_db
+from decimal import Decimal
 
-
-def create_payment(db: Session, payment: PaymentBase, user_id: int):
+def create_payment(db: Session, payment: PaymentBase, user_id: int, status: str, amount: Decimal):
     db_payment = Dbpayment(
         user_id=user_id,
         booking_id=payment.booking_id,
-        amount=payment.amount,
-        status=payment.status,
+        amount=amount,
+        status=status,
         payment_date=payment.payment_date,
     )
     db.add(db_payment)

@@ -162,3 +162,51 @@ async def update_user(
         )
 
     return response_data
+
+from typing import List
+
+# Admin sees users' list
+@router.get("/all", response_model=List[UserDisplay], summary="Admin gets list of all users")
+def get_all_users(
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return db.query(Dbuser).all()
+
+
+# Admin sees user's info
+@router.get("/{user_id}", response_model=UserDisplay, summary="Admin gets a specific user's info")
+def get_user_info(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+#Admin deletes user
+@router.delete("/{user_id}", summary="Admin deletes a user")
+def delete_user_by_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Only admins can delete users")
+
+    user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.delete(user)
+    db.commit()
+    return {"detail": f"User with ID {user_id} has been deleted successfully"}
+

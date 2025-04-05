@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from db.models import Dbuser
 from schemas import UserUpdate, UserBase
 from .Hash import Hash
+from typing import Optional, List
+from sqlalchemy import or_
 
 
 def create_user(db: Session, request: UserBase) -> Dbuser:
@@ -87,5 +89,27 @@ def update_user(
     db.refresh(user)
     return user
 
+def combined_search_filter(
+    db: Session,
+    search_term: Optional[str] = None,
+    username: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+):
+    query = db.query(Dbuser)
 
+    # Search
+    if search_term:
+        pattern = f"%{search_term}%"
+        query = query.filter(
+            or_(
+                Dbuser.username.ilike(pattern),
+                Dbuser.email.ilike(pattern),
+                Dbuser.phone_number.ilike(pattern),
+            )
+        )
+    if username:
+        query = query.filter(Dbuser.username.ilike(f"%{username.strip()}%"))
+
+    return query.offset(skip).limit(limit).all()
 

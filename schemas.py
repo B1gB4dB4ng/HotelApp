@@ -17,6 +17,7 @@ class UserBase(BaseModel):
     email: EmailStr
     password: Annotated[str, StringConstraints(min_length=8)]
     phone_number: Annotated[str, StringConstraints(min_length=10, max_length=15)]
+    
 
     @field_validator("phone_number")
     def validate_phone(cls, v):

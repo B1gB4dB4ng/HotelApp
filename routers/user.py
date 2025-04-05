@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm.session import Session
 from auth.oauth2 import create_access_token, get_current_user
@@ -6,7 +6,9 @@ from db.database import get_db
 from schemas import TokenResponse, UserBase, UpdateUserResponse, UserDisplay, UserUpdate
 from db import db_user
 from db.models import Dbuser
+from typing import Optional, List
 import re
+
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -165,14 +167,58 @@ async def update_user(
 
 
 # get user by id
-@router.get("/{user_id}", response_model=UserDisplay)
-def get_user(id: int, 
-             db: Session = Depends(get_db),
-             current_user: Dbuser = Depends(get_current_user):
-    user = db_user.get_user(db, id)
+@router.get("/{user_id}", description="Superuser can take any user. Logged-in user can take themself", response_model=UserDisplay)
+def get_user(user_id: int, db: Session = Depends(get_db), current_user: Dbuser = Depends(get_current_user)):
+    
 
-    if not current_user.user.is_superuser:
+    user = db_user.get_user(db, user_id)
+
+    #check when user doesn't exist depending on the role of user we display error
+    if user is None:
+        if current_user.is_superuser:
+            raise HTTPException(status_code=404, detail="User not found")
+        else:
+            raise HTTPException(status_code=403, detail="Not authorized to access this user")
+
+
+    #validate super user and current user
+    if not current_user.is_superuser and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to get this user"
+        )
+
+    return user
+
+
+
+# Combine search and filter logic into one endpoint
+@router.get(
+    "/", description="Get filtered/searched users ", response_model=List[UserDisplay]
+)
+def get_users(
+    search_term: Optional[str] = None,
+    username: Optional[str] = Query(None, min_length=2),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user)
+):
+    
+    #validate super user and current user
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="Not authorized to get users' list"
         )
 
+
+    # Use the COMBINED function 
+    users = db_user.combined_search_filter(
+        db,
+        search_term=search_term,
+        username=username.strip() if username else None,
+        skip=0,  # Hardcode or make optional
+        limit=100,  # Default limit
+    )
+
+    if not users:
+        raise HTTPException(status_code=404, detail="Users not found")
+
+    return users

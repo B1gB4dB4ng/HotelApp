@@ -166,6 +166,7 @@ async def update_user(
     return response_data
 
 
+"""
 # get user by id
 @router.get("/{user_id}", description="Superuser can take any user. Logged-in user can take themself", response_model=UserDisplay)
 def get_user(user_id: int, db: Session = Depends(get_db), current_user: Dbuser = Depends(get_current_user)):
@@ -218,6 +219,47 @@ def get_users(
         limit=100,  # Default limit
     )
 
+    if not users:
+        raise HTTPException(status_code=404, detail="Users not found")
+
+    return users
+
+"""
+
+@router.get(
+    "/", description="Get filtered/searched users", response_model=List[UserDisplay]
+)
+def get_users(
+    search_term: Optional[str] = None,
+    username: Optional[str] = Query(None, min_length=2),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user)
+):  
+    # Use the combined function to search for users
+    users = db_user.combined_search_filter(
+        db,
+        search_term=search_term,
+        username=username.strip() if username else None,
+        skip=0,  # Can be parameterized
+        limit=100,  # Default to 100 results
+    )
+
+    # If the logged-in user is not found in the search results, do not append them
+    # Users should only see their own information if they are not a superuser
+    if not current_user.is_superuser:
+        # Filter out all users except for the current user
+        filtered_users = []
+        for user in users:
+            if user.id == current_user.id:
+                filtered_users.append(user)
+
+        users = filtered_users
+        
+        # If no users found (which should only happen when they search for someone else), raise an error
+        if not users:
+            raise HTTPException(status_code=403, detail="Not authorized to get users' list")
+    
+    # If no users found after filtering (for superusers or after filtering for the current user), return 404
     if not users:
         raise HTTPException(status_code=404, detail="Users not found")
 

@@ -12,6 +12,9 @@ from pydantic import (
     Field
 )
 from enum import Enum
+from datetime import date, datetime
+from calendar import monthrange
+
 
 
 
@@ -167,9 +170,81 @@ class BookingUpdate(BookingBase):
     cancel_reason: Optional[str] = None  # Optional reason, can be filled when canceling
 
 #-----------------------------------------------------------
-from pydantic import BaseModel, Field, validator
-from decimal import Decimal
-from datetime import date, datetime
+# from pydantic import BaseModel, Field
+# from decimal import Decimal
+# from datetime import date, datetime
+
+# class PaymentBase(BaseModel):
+#     booking_id: int
+#     payment_date: date
+
+#     card_number: str = Field(..., min_length=16, max_length=16)
+#     expiry_month: int = Field(..., ge=1, le=12)
+#     expiry_year: int = Field(..., ge=2024)
+#     cvv: str = Field(..., min_length=3, max_length=4)
+
+#     @field_validator("card_number")
+#     @classmethod
+#     def validate_card_number(cls, v):
+#         if not v.isdigit():
+#             raise ValueError("Card number must contain digits only.")
+#         # Mock rule: Last digit must be even
+#         if int(v[-1]) % 2 != 0:
+#             raise ValueError("Fake check failed: card is invalid because it ends in an odd digit.")
+#         if not cls.luhn_check(v):
+#             raise ValueError("Card number is invalid (Luhn check failed).")
+#         return v
+        
+    
+#     @field_validator("cvv")
+#     @classmethod
+#     def validate_cvv(cls, v):
+#         if not v.isdigit():
+#             raise ValueError("CVV must contain digits only.")
+#         return v
+
+#     @field_validator("expiry_year")
+#     @classmethod
+#     def validate_expiry_date(cls, year, info):
+#         month = info.data.get("expiry_month")
+#         if month is None:
+#             raise ValueError("Expiry month is required")
+#         today = datetime.today()
+#         expiry = datetime(year, month, 1)
+#         if expiry < today.replace(day=1):
+#             raise ValueError("Card is expired.")
+#         return year
+
+#     @staticmethod
+#     def luhn_check(card_number: str) -> bool:
+#         digits = [int(d) for d in card_number]
+#         digits.reverse()  # make it right to left
+#         total = 0
+#         for index, digit in enumerate(digits):
+#             if index % 2 == 1:
+#                 doubled = digit * 2
+#                 if doubled > 9:
+#                     doubled = doubled - 9
+#                 total += doubled
+#             else:
+#                 total += digit
+
+#         return total % 10 == 0
+# class PaymentShow(BaseModel):
+#     id: int
+#     booking_id: int
+#     amount: Decimal
+#     status: str
+#     payment_date: date
+
+#     class Config:
+#         from_attributes = True
+
+class PaymentStatus(str, Enum):
+    pending = "pending"
+    completed = "completed"
+    failed = "failed"
+    refunded = "refunded"
 
 class PaymentBase(BaseModel):
     booking_id: int
@@ -183,16 +258,15 @@ class PaymentBase(BaseModel):
     @field_validator("card_number")
     @classmethod
     def validate_card_number(cls, v):
+        v = v.replace(" ", "")  # Clean up spaces
         if not v.isdigit():
             raise ValueError("Card number must contain digits only.")
-        # Mock rule: Last digit must be even
         if int(v[-1]) % 2 != 0:
             raise ValueError("Fake check failed: card is invalid because it ends in an odd digit.")
         if not cls.luhn_check(v):
             raise ValueError("Card number is invalid (Luhn check failed).")
         return v
-        
-    
+
     @field_validator("cvv")
     @classmethod
     def validate_cvv(cls, v):
@@ -206,38 +280,42 @@ class PaymentBase(BaseModel):
         month = info.data.get("expiry_month")
         if month is None:
             raise ValueError("Expiry month is required")
-        today = datetime.today()
-        expiry = datetime(year, month, 1)
-        if expiry < today.replace(day=1):
+        last_day = monthrange(year, month)[1]
+        expiry = datetime(year, month, last_day, 23, 59, 59)
+        if expiry < datetime.now():
             raise ValueError("Card is expired.")
         return year
 
     @staticmethod
     def luhn_check(card_number: str) -> bool:
         digits = [int(d) for d in card_number]
-        digits.reverse()  # make it right to left
+        digits.reverse()
         total = 0
         for index, digit in enumerate(digits):
             if index % 2 == 1:
                 doubled = digit * 2
                 if doubled > 9:
-                    doubled = doubled - 9
+                    doubled -= 9
                 total += doubled
             else:
                 total += digit
-
         return total % 10 == 0
+
+# ✅ Schema for creating a payment
+class PaymentCreate(PaymentBase):
+    amount: Decimal
+    status: PaymentStatus = PaymentStatus.pending  # ✅ Now uses Enum with default
+
+# ✅ Schema for showing a payment
 class PaymentShow(BaseModel):
     id: int
     booking_id: int
     amount: Decimal
-    status: str
+    status: PaymentStatus  # ✅ Now uses Enum
     payment_date: date
 
     class Config:
         from_attributes = True
-
-
 #-----------------------------------------------------------
 class IsReviewStatus(str, Enum):
     pending = "pending"
@@ -245,16 +323,20 @@ class IsReviewStatus(str, Enum):
     rejected = "rejected"
 
 class ReviewBase(BaseModel):
-    user_id: int
     hotel_id: int
     booking_id: int
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
-    created_at: date
-    status: IsReviewStatus = IsReviewStatus.pending
+    #created_at: date
+    #status: IsReviewStatus = IsReviewStatus.pending
 
 class ReviewShow(ReviewBase):
     id: int
+    created_at: date
+    status: IsReviewStatus
+
+    class Config:
+        from_attributes = True
 
     class Config:
         from_attributes = True

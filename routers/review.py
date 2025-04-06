@@ -16,13 +16,17 @@ router = APIRouter(
 #-------------------------------------------------------------------------------------------------
 # submiting a review
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
-def submit_review(request: ReviewBase, db: Session = Depends(get_db), current_user: Dbuser = Depends(get_current_user),):
+@router.post("/{user_id}", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
+def submit_review(user_id: int , request: ReviewBase, db: Session = Depends(get_db), current_user: Dbuser = Depends(get_current_user),):
     # Check if user exists
-    user = db.query(Dbuser).filter(Dbuser.id == request.user_id).first()
+    user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Ensure the user ID in the request matches the logged-in user
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not allowed to submit a review for another user.")
+    
     # Check if hotel exists
     hotel = db.query(Dbhotel).filter(Dbhotel.id == request.hotel_id).first()
     if not hotel:
@@ -34,8 +38,12 @@ def submit_review(request: ReviewBase, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=404, detail="Booking not found")
 
     # Validate that the booking belongs to the user
-    if booking.user_id != request.user_id:
+    if booking.user_id != user_id:
         raise HTTPException(status_code=403, detail="You can only review your own bookings.")
+    
+    # Ensure the booking is confirmed
+    if booking.status != "confirmed":
+        raise HTTPException(status_code=400, detail="You can only review confirmed bookings.")
 
     # Validate that the booking is for the same hotel
     if booking.hotel_id != request.hotel_id:
@@ -51,7 +59,7 @@ def submit_review(request: ReviewBase, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=400, detail="Review for this booking already exists.")
 
     # All validations passed → create the review
-    return db_review.create_review(db, request)
+    return db_review.create_review(db, user_id, request)
 
 #-------------------------------------------------------------------------------------------------
 # Get the review with review_id
@@ -81,6 +89,7 @@ def validate_rating(value: Optional[float], name: str):
 @router.get("/", response_model=List[ReviewShow])
 def filter_reviews(
     db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
     user_id: Optional[int] = Query(
         None, gt=0, description="Filter by user ID (must be a positive integer)"
     ),
@@ -100,10 +109,26 @@ def filter_reviews(
     ),
     status: IsReviewStatus = Query(
         default=IsReviewStatus.pending,
-        description="Filter by review status (pending, confirmed, or rejected)"
+        #description="Filter by review status (pending, confirmed, or rejected)"
     ),
+    start_date: Optional[date] = Query(None, description="Filter reviews from this date"),
+    end_date: Optional[date] = Query(None, description="Filter reviews until this date"),
 ):
 
+
+    # ✅ Role-based filter handling
+    if not current_user.is_superuser:
+        if user_id and user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You cannot filter reviews for another user.")
+        user_id = current_user.id  # force their own ID
+        status = IsReviewStatus.confirmed  # force confirmed reviews only
+
+        # Optional: restrict to their own booking if booking_id is given
+        if booking_id and not db_review.booking_belongs_to_user(db, current_user.id, booking_id):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Booking ID {booking_id} does not belong to you."
+            )
     # Existence checks
     if user_id is not None and not db_review.user_exists(db, user_id):
         raise HTTPException(status_code=404, detail=f"User with ID {user_id} does not exist.")
@@ -148,6 +173,8 @@ def filter_reviews(
         min_rating=min_rating,
         max_rating=max_rating,
         status=status, 
+        start_date=start_date,
+        end_date=end_date
     )
 
     # No match

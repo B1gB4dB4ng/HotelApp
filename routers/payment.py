@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path,Query
 from sqlalchemy.orm import Session
 from db.database import get_db
-from schemas import PaymentBase, PaymentShow
+from schemas import PaymentCreate, PaymentShow,PaymentStatus
 from db import db_payment
 from auth.oauth2 import get_current_user
-from db.models import Dbuser, Dbbooking
+from db.models import Dbuser, Dbbooking,Dbpayment
 from decimal import Decimal
+from typing import List, Optional
+from datetime import date
+
 
 
 router = APIRouter(prefix="/payment", tags=["payment"])
@@ -13,7 +16,7 @@ router = APIRouter(prefix="/payment", tags=["payment"])
 @router.post("/{user_id}", response_model=PaymentShow)
 def make_payment_for_user(
     user_id: int,
-    payment: PaymentBase,
+    payment: PaymentCreate,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user)
 ):
@@ -21,7 +24,7 @@ def make_payment_for_user(
         raise HTTPException(status_code=403, detail="You are not allowed to pay for another user.")
 
     # Always successful payment
-    payment_status = "completed"
+    payment_status = PaymentStatus.completed
 
     # Get booking and amount
     booking = db.query(Dbbooking).filter(Dbbooking.id == payment.booking_id).first()
@@ -73,3 +76,50 @@ def get_payment_with_payment_id(
     )
 
     return payment
+
+#-------------------------------------------------------------------------------------------
+@router.get("/", response_model=List[PaymentShow], summary="Search all payments (superadmin only)")
+def search_payments_superadmin_only(
+    status: Optional[PaymentStatus] = Query(None, description="Filter by status"),
+    user_id: Optional[int] = Query(None, gt=0, description="User ID"),
+    start_date: Optional[date] = Query(None, description="Start of payment date"),
+    end_date: Optional[date] = Query(None, description="End of payment date"),
+    min_amount: Optional[Decimal] = Query(None, gt=0, description="Minimum amount"),
+    max_amount: Optional[Decimal] = Query(None, gt=0, description="Maximum amount"),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    # 🔐 Superadmin-only access check
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Access denied. Superadmin only.")
+
+    query = db.query(Dbpayment)
+
+    # ✅ Apply optional filters
+    if user_id:
+        query = query.filter(Dbpayment.user_id == user_id)
+
+    if status:
+        query = query.filter(Dbpayment.status == status.value)
+
+    if start_date:
+        query = query.filter(Dbpayment.payment_date >= start_date)
+
+    if end_date:
+        query = query.filter(Dbpayment.payment_date <= end_date)
+
+    if min_amount and max_amount and min_amount > max_amount:
+        raise HTTPException(status_code=400, detail="min_amount cannot be greater than max_amount")
+
+    if min_amount:
+        query = query.filter(Dbpayment.amount >= min_amount)
+
+    if max_amount:
+        query = query.filter(Dbpayment.amount <= max_amount)
+
+    results = query.all()
+     #If no payments found, raise 404 with custom message
+    if not results:
+        raise HTTPException(status_code=404, detail="No matching payments found.")
+
+    return results

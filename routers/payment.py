@@ -43,3 +43,15 @@ def make_payment_for_user(
         db.commit()
 
     return saved_payment
+#-------------------------------------------------------------------------------------------
+# Get the payment with payment_id
+@router.get("/{payment_id}", response_model = PaymentShow, summary="Get the payment with Payment_id",)
+def get_payment_with_payment_id(
+    payment_id : int,
+    db: Session = Depends(get_db),
+):
+    # to  check if the payment_id is exist or not
+    payment = db_payment.get_payment_by_payment_id(db, payment_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail="payment not found. ")
+    return payment

@@ -48,12 +48,20 @@ def combined_search_filter(
     db: Session,
     search_term: Optional[str] = None,
     location: Optional[str] = None,
+    is_approved: Optional[bool] = None,
+    owner_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
 ):
     query = db.query(Dbhotel)
 
-    # Search
+    if is_approved is not None:
+        query = query.filter(Dbhotel.is_approved == is_approved)
+
+    if owner_id is not None:
+        query = query.filter(Dbhotel.owner_id == owner_id)
+
+    # Search term filter
     if search_term:
         pattern = f"%{search_term}%"
         query = query.filter(
@@ -63,6 +71,7 @@ def combined_search_filter(
                 Dbhotel.description.ilike(pattern),
             )
         )
+
     if location:
         query = query.filter(Dbhotel.location.ilike(f"%{location.strip()}%"))
 

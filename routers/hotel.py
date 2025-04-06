@@ -44,17 +44,47 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
 def get_hotels(
     search_term: Optional[str] = None,
     location: Optional[str] = Query(None, min_length=1),
+    is_approved: Optional[bool] = None,  # Default value is True
+    view_own: Optional[bool] = None,  # New parameter for owners
     db: Session = Depends(get_db),
+    current_user: Optional[Dbuser] = Depends(get_current_user),
 ):
-    # Use the COMBINED function (from db_hotel.py)
-    return db_hotel.combined_search_filter(
-        db,
-        search_term=search_term,
-        location=location.strip() if location else None,
-        skip=0,  # Hardcode or make optional
-        limit=100,  # Default limit
-    )
+    filters = {
+        "search_term": search_term,
+        "location": location.strip() if location else None,
+        "skip": 0,
+        "limit": 100,
+    }
 
+    if current_user is None:
+        # Non-logged-in user
+        filters["is_approved"] = True  # Only show approved hotels
+
+    else:
+        # Admin user
+        if current_user.is_superuser:
+            # Admin: No need for view_own parameter, they see all hotels (approved and non-approved)
+            if is_approved is not None:
+                filters["is_approved"] = is_approved
+
+        else:
+            # Logged-in regular user (Owner)
+            if view_own:
+                filters["owner_id"] = current_user.id  # Only show the user's own hotels
+                
+                if is_approved is not None :
+                    filters["is_approved"] = is_approved
+                    print(filters)
+                else:
+                    filters["is_approved"] = None
+                    print(filters)
+            else:
+        # Default case for owners - only approved hotels
+                filters["is_approved"] = True 
+
+
+    # Use the COMBINED function from db_hotel.py
+    return db_hotel.combined_search_filter(db, **filters)
 
 # update hotels
 @router.put(

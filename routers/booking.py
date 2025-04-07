@@ -45,7 +45,7 @@ def create_a_booking(
         raise HTTPException(
             status_code=400, detail="The room is not available for the selected dates."
         )
-    if not request.user_id == user.id or not user.is_superuser:
+    if not user.is_superuser and not request.user_id == user.id:
         raise HTTPException(
             status_code=403, detail="You are not authorized to book this room."
         )

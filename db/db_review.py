@@ -3,6 +3,7 @@ from schemas import ReviewBase
 from sqlalchemy import func
 from db.models import Dbreview, Dbhotel
 from typing import Optional, List
+from datetime import date
 
 
 # ------------------------------------------------------------------------------------------
@@ -63,6 +64,8 @@ def get_filtered_reviews(
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = None,  # ✅ NEW
+    end_date: Optional[date] = None, 
 ) -> List[Dbreview]:
     query = db.query(Dbreview)
 

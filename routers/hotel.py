@@ -61,7 +61,6 @@ def get_hotels(
 
     if is_approved is not None:
         filters["is_approved"] = is_approved
-    # Якщо is_approved = None -> нічого не додаємо, і повернуться всі (і затверджені, і ні)
 
     return db_hotel.combined_search_filter(db, **filters)
 

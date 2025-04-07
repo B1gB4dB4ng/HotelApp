@@ -21,6 +21,12 @@ from enum import Enum as PyEnum
 from sqlalchemy import Enum as SqlEnum
 
 
+class IsActive(PyEnum):
+    inactive = "inactive"
+    active = "active"
+    deleted = "deleted"
+
+
 class Dbuser(Base):
     __tablename__ = "user"
 
@@ -31,6 +37,7 @@ class Dbuser(Base):
     is_superuser = Column(Boolean, default=False)
     phone_number = Column(String(15), unique=True, nullable=False)  # +1234567890123
     token_version = Column(Integer, default=0)
+    status = Column(Enum(IsActive), default=IsActive.active)
 
     hotels = relationship("Dbhotel", back_populates="owner")
     bookings = relationship("Dbbooking", back_populates="user")
@@ -38,12 +45,6 @@ class Dbuser(Base):
     payments = relationship(
         "Dbpayment", back_populates="user"
     )  # Added for 1:M user-payment
-
-
-class IsActive(PyEnum):
-    inactive = "inactive"
-    active = "active"
-    deleted = "deleted"
 
 
 class Dbhotel(Base):
@@ -71,7 +72,6 @@ class IsRoomStatus(PyEnum):
     available = "available"
     reserved = "booked"
     unavailable = "unavailable"
-
 
 
 class Dbroom(Base):
@@ -147,11 +147,15 @@ class Dbpayment(Base):
 
     booking = relationship("Dbbooking", back_populates="payment")  # Changed to singular
     user = relationship("Dbuser", back_populates="payments")  # Updated
-#---------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------
 class IsReviewStatus(PyEnum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+    deleted = "deleted"
+
 
 class Dbreview(Base):
     __tablename__ = "review"
@@ -168,8 +172,8 @@ class Dbreview(Base):
     status = Column(
         SqlEnum(IsReviewStatus, name="review_status"),  # ✅ using Python Enum here
         default=IsReviewStatus.pending,
-        nullable=False
-    )  
+        nullable=False,
+    )
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
     booking = relationship("Dbbooking", back_populates="review")  # Changed to singular

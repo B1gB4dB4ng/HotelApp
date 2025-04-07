@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 from db.database import get_db
 from db.models import Dbuser
+from typing import Optional 
 
 
 load_dotenv()
@@ -16,7 +17,8 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-
+# (optional login)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
 
 def create_access_token(user: Dbuser, expires_delta: timedelta | None = None) -> str:
     to_encode = {
@@ -71,3 +73,30 @@ def get_current_user(
         )
 
     return user  # Return full user object
+
+
+
+# ✅ NEW: Optional user dependency
+def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+) -> Optional[Dbuser]:
+    if not token:
+        return None  # 👈 Anonymous user
+
+    payload = verify_access_token(token)
+    if payload is None:
+        return None
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+
+    user = db.query(Dbuser).filter(Dbuser.id == int(user_id)).first()
+    if not user:
+        return None
+
+    if payload.get("token_version") != user.token_version:
+        return None
+
+    return user

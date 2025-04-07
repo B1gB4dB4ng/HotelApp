@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
 from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus
+from auth.oauth2 import get_current_user_optional  # ✅ Use optional version
 from db import db_review
 from typing import List, Optional, Literal
 from datetime import date
@@ -89,7 +90,7 @@ def validate_rating(value: Optional[float], name: str):
 @router.get("/", response_model=List[ReviewShow])
 def filter_reviews(
     db: Session = Depends(get_db),
-    current_user: Dbuser = Depends(get_current_user),
+    current_user: Optional[Dbuser] = Depends(get_current_user_optional),  # ✅ Now optional
     user_id: Optional[int] = Query(
         None, gt=0, description="Filter by user ID (must be a positive integer)"
     ),
@@ -116,39 +117,114 @@ def filter_reviews(
 ):
 
 
-    # ✅ Role-based filter handling
-    if not current_user.is_superuser:
-        if user_id and user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You cannot filter reviews for another user.")
-        user_id = current_user.id  # force their own ID
-        status = IsReviewStatus.confirmed  # force confirmed reviews only
+    # # Role-based filter handling
+    # # normal user
+    # if not current_user.is_superuser:
+    #     status = IsReviewStatus.confirmed
+    # # normal users only allow filtering their own reviews
+    #     if user_id is not None and user_id != current_user.id:
+    #         raise HTTPException(status_code=403, detail="You cannot filter reviews for another user.")
 
-        # Optional: restrict to their own booking if booking_id is given
+    # # users can just view thier own bookings
+    #     if booking_id and not db_review.booking_belongs_to_user(db, current_user.id, booking_id):
+    #         raise HTTPException(
+    #             status_code=403,
+    #             detail=f"Booking ID {booking_id} does not belong to you."
+    #         )
+    # # Existence checks
+    # if user_id is not None and not db_review.user_exists(db, user_id):
+    #     raise HTTPException(status_code=404, detail=f"User with ID {user_id} does not exist.")
+
+    # if hotel_id is not None and not db_review.hotel_exists(db, hotel_id):
+    #     raise HTTPException(status_code=404, detail=f"Hotel with ID {hotel_id} does not exist.")
+
+    # if booking_id is not None and not db_review.booking_exists(db, booking_id):
+    #     raise HTTPException(status_code=404, detail=f"Booking with ID {booking_id} does not exist.")
+
+    
+    # if user_id is not None and hotel_id is not None:
+    #     if not db_review.review_exists_for_user_and_hotel(db, user_id, hotel_id):
+    #         raise HTTPException(
+    #             status_code=400,
+    #             detail=f"User ID {user_id} does not have any reviews for Hotel ID {hotel_id}."
+    #         )
+
+    
+    # if user_id is not None and booking_id is not None:
+    #     if not db_review.booking_belongs_to_user(db, user_id, booking_id):
+    #         raise HTTPException(
+    #             status_code=400,
+    #             detail=f"Booking ID {booking_id} does not belong to User ID {user_id}."
+    #         )
+    #     if not db_review.review_exists_for_user_and_booking(db, user_id, booking_id):
+    #         raise HTTPException(
+    #             status_code=400,
+    #             detail=f"User ID {user_id} has not submitted a review for Booking ID {booking_id}."
+    #         )
+
+    # # Validate rating format
+    # min_rating = validate_rating(min_rating, "min_rating")
+    # max_rating = validate_rating(max_rating, "max_rating")
+
+    # # Fetch reviews
+    # reviews = db_review.get_filtered_reviews(
+    #     db=db,
+    #     user_id=user_id,
+    #     hotel_id=hotel_id,
+    #     booking_id=booking_id,
+    #     min_rating=min_rating,
+    #     max_rating=max_rating,
+    #     status=status, 
+    #     start_date=start_date,
+    #     end_date=end_date
+    # )
+
+    # # No match
+    # if not reviews:
+    #     raise HTTPException(status_code=404, detail="There are no reviews matching your filters.")
+
+    # return reviews
+        # ✅ Anonymous users → only confirmed reviews, no user filtering
+# 👤 Anonymous user
+    if not current_user:
+        if user_id:
+            raise HTTPException(status_code=403, detail="Login required to filter by user_id.")
+        status = IsReviewStatus.confirmed
+
+    # 👥 Logged-in normal user
+    elif not current_user.is_superuser:
+        status = IsReviewStatus.confirmed  # force confirmed
+
+        if user_id is not None and user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You cannot filter reviews for another user.")
+
+        if not user_id:
+            user_id = current_user.id  # allow personal review history
+
         if booking_id and not db_review.booking_belongs_to_user(db, current_user.id, booking_id):
             raise HTTPException(
                 status_code=403,
                 detail=f"Booking ID {booking_id} does not belong to you."
             )
-    # Existence checks
-    if user_id is not None and not db_review.user_exists(db, user_id):
+
+    # 🛡️ Admins → no restrictions
+
+    # ✅ Existence checks
+    if user_id and not db_review.user_exists(db, user_id):
         raise HTTPException(status_code=404, detail=f"User with ID {user_id} does not exist.")
-
-    if hotel_id is not None and not db_review.hotel_exists(db, hotel_id):
+    if hotel_id and not db_review.hotel_exists(db, hotel_id):
         raise HTTPException(status_code=404, detail=f"Hotel with ID {hotel_id} does not exist.")
-
-    if booking_id is not None and not db_review.booking_exists(db, booking_id):
+    if booking_id and not db_review.booking_exists(db, booking_id):
         raise HTTPException(status_code=404, detail=f"Booking with ID {booking_id} does not exist.")
 
-    
-    if user_id is not None and hotel_id is not None:
+    if user_id and hotel_id:
         if not db_review.review_exists_for_user_and_hotel(db, user_id, hotel_id):
             raise HTTPException(
                 status_code=400,
                 detail=f"User ID {user_id} does not have any reviews for Hotel ID {hotel_id}."
             )
 
-    
-    if user_id is not None and booking_id is not None:
+    if user_id and booking_id:
         if not db_review.booking_belongs_to_user(db, user_id, booking_id):
             raise HTTPException(
                 status_code=400,
@@ -160,11 +236,11 @@ def filter_reviews(
                 detail=f"User ID {user_id} has not submitted a review for Booking ID {booking_id}."
             )
 
-    # Validate rating format
+    # ✅ Validate rating format
     min_rating = validate_rating(min_rating, "min_rating")
     max_rating = validate_rating(max_rating, "max_rating")
 
-    # Fetch reviews
+    # ✅ Fetch reviews
     reviews = db_review.get_filtered_reviews(
         db=db,
         user_id=user_id,
@@ -172,12 +248,11 @@ def filter_reviews(
         booking_id=booking_id,
         min_rating=min_rating,
         max_rating=max_rating,
-        status=status, 
+        status=status,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
     )
 
-    # No match
     if not reviews:
         raise HTTPException(status_code=404, detail="There are no reviews matching your filters.")
 

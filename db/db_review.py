@@ -4,12 +4,14 @@ from sqlalchemy import func
 from db.models import Dbreview, Dbhotel
 from typing import Optional, List
 from datetime import date
+
+
 # ------------------------------------------------------------------------------------------
 # submit a review
-def create_review(db: Session, user_id:int, request: ReviewBase):
+def create_review(db: Session, request: ReviewBase):
     # Step 1: Save the review
     db_review = Dbreview(
-        user_id=user_id,
+        user_id=request.user_id,
         hotel_id=request.hotel_id,
         booking_id=request.booking_id,
         rating=request.rating,
@@ -44,10 +46,14 @@ def create_review(db: Session, user_id:int, request: ReviewBase):
 # ------------------------------------------------------------------------------------------
 # def get_all_reviews_by_user(db: Session, user_id: int):
 #     return db.query(Dbreview).filter(Dbreview.user_id == user_id).all()
+
+
 # ------------------------------------------------------------------------------------------
 # get review by id
 def get_review_by_review_id(db: Session, review_id: int):
     return db.query(Dbreview).filter(Dbreview.id == review_id).first()
+
+
 # ------------------------------------------------------------------------------------------
 # get reviewa by filtering
 def get_filtered_reviews(
@@ -58,8 +64,8 @@ def get_filtered_reviews(
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
     status: Optional[str] = None,
-    start_date: Optional[date] = None,  
-    end_date: Optional[date] = None,
+    start_date: Optional[date] = None,  # ✅ NEW
+    end_date: Optional[date] = None, 
 ) -> List[Dbreview]:
     query = db.query(Dbreview)
 
@@ -80,12 +86,6 @@ def get_filtered_reviews(
 
     if status is not None:
         query = query.filter(Dbreview.status == status)
-
-    if start_date is not None:
-        query = query.filter(Dbreview.created_at >= start_date)
-
-    if end_date is not None:
-        query = query.filter(Dbreview.created_at <= end_date)
 
     return query.all()
 

@@ -44,7 +44,7 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
 def get_hotels(
     search_term: Optional[str] = None,
     location: Optional[str] = Query(None, min_length=1),
-    is_approved: Optional[bool] = None,  # Default value is True
+    is_approved: Optional[bool] = None,  # 
     view_own: Optional[bool] = None,  # New parameter for owners
     db: Session = Depends(get_db),
     current_user: Optional[Dbuser] = Depends(get_current_user),
@@ -73,10 +73,10 @@ def get_hotels(
                 filters["owner_id"] = current_user.id  # Only show the user's own hotels
                 
                 if is_approved is not None :
-                    filters["is_approved"] = is_approved
+                    filters["is_approved"] = is_approved # show the hotels in accordance with selected value of is_approved (False / True)
                     print(filters)
                 else:
-                    filters["is_approved"] = None
+                    filters["is_approved"] = None  #show only approved hotels
                     print(filters)
             else:
         # Default case for owners - only approved hotels
@@ -91,7 +91,7 @@ def get_hotels(
     "/{id}",
     response_model=UpdateHotelResponse,
     summary="Update hotel",
-    description="Only owner or super admin can update",
+    description="Only owner or super admin can update. Only Admin can approve hotel",
 )
 def update_hotel(
     id: int,
@@ -110,7 +110,7 @@ def update_hotel(
 
     if not user.is_superuser and request.is_approved != hotel.is_approved:
         raise HTTPException(
-            status_code=403, detail="Only an admin can update is_approved"
+            status_code=403, detail="Only an admin can update is_approved."
         )
 
     updated_hotel = db_hotel.update_hotel(db, id, request)
@@ -149,22 +149,3 @@ def delete_hotel(
 
     return {"message": delete_message}  # Return success message
 
-
-# Admin approves hotel
-@router.put("/{hotel_id}/approve", response_model=HotelDisplay)
-def approve_hotel(
-    hotel_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dbuser = Depends(get_current_user)
-):
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="Only admins can approve hotels"
-        )
-    
-    hotel = db_hotel.get_hotel(db, hotel_id)
-    if not hotel:
-        raise HTTPException(status_code=404, detail="Hotel not found")
-
-    return db_hotel.approve_hotel_by_id(db, hotel_id)

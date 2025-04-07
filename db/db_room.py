@@ -39,15 +39,17 @@ def get_room_by_number(db: Session, room_num: int, hotel_id: int):
     return db.query(Dbroom).filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id).first()
 
 # Delete a Room
-def delete_room(db: Session, room_id: int, hotel_id: int):
+def delete_room(db: Session, room_id: int):
     room = db.query(Dbroom).filter(
         Dbroom.id == room_id,
-        Dbroom.hotel_id == hotel_id,
         Dbroom.is_active == IsActive.active
     ).first()
+
     if not room:
         return None
+
     room.is_active = IsActive.deleted
+    room.status = IsRoomStatus.unavailable  
     db.commit()
     return room
 
@@ -66,14 +68,22 @@ def update_room(db: Session, room_id: int, request: RoomUpdate):
 def get_room(db: Session, room_id: int):
     return db.query(Dbroom).filter(Dbroom.id == room_id).first()
 
-def get_rooms_by_hotel(db: Session, hotel_id: int, skip: int = 0, limit: int = 100, status: Optional[str] = None):
+def get_rooms_by_hotel(
+    db: Session,
+    hotel_id: int,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+):
     query = db.query(Dbroom).filter(
         Dbroom.hotel_id == hotel_id,
         Dbroom.is_active == IsActive.active
     )
     if status:
         query = query.filter(Dbroom.status == status)
+
     return query.offset(skip).limit(limit).all()
+
 
 # Search a Room Using Different Filters
 def advanced_room_search(

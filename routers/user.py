@@ -7,6 +7,8 @@ from schemas import TokenResponse, UserBase, UpdateUserResponse, UserDisplay, Us
 from db import db_user
 from db.models import Dbuser
 import re
+from db.models import IsActive
+from typing import List
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -76,14 +78,14 @@ async def update_user(
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    # Validate inputs first
-    update_data = request.model_dump(exclude_unset=True)
-    if "username" in update_data:
-        validate_username(update_data["username"])
-    if "password" in update_data:
-        validate_password(update_data["password"])
-    if "phone_number" in update_data:
-        validate_phone(update_data["phone_number"])
+    # Get the target user
+    target_user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent updates on soft-deleted accounts
+    if target_user.status == IsActive.deleted:
+        raise HTTPException(status_code=400, detail="User account is deactivated or deleted")
 
     # Permission check
     is_admin = current_user.is_superuser
@@ -93,41 +95,35 @@ async def update_user(
             detail="You can only update your own profile",
         )
 
-    # Get target user's current data
-    # Get target user's current data
-    target_user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
-    if not target_user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    update_data = request.model_dump(exclude_unset=True)
 
-    # Modified admin role change check
-    if (
-        "is_superuser" in request.model_dump(exclude_unset=True)
-        and request.is_superuser != target_user.is_superuser
-        and not current_user.is_superuser
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can modify user roles",
-        )
+    # Validation
+    if "username" in update_data:
+        validate_username(update_data["username"])
+    if "password" in update_data:
+        validate_password(update_data["password"])
+    if "phone_number" in update_data:
+        validate_phone(update_data["phone_number"])
 
-    # Define all sensitive fields
-    SENSITIVE_FIELDS = [
-        "password",
-        "email",
-        "username",
-    ]
-    is_updating_sensitive_field = any(
-        field in update_data for field in SENSITIVE_FIELDS
-    )
+    # Prevent non-admins from changing role/status
+    if "is_superuser" in update_data and not is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can modify user roles")
+    if "status" in update_data and not is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can change user status")
 
-    # Check current password requirement for non-admin sensitive changes
+    # Handle sensitive field changes
+    SENSITIVE_FIELDS = ["password", "email", "username"]
+    is_updating_sensitive_field = any(field in update_data for field in SENSITIVE_FIELDS)
+
+    # Require current password for non-admins updating sensitive fields
     if not is_admin and is_updating_sensitive_field:
         if not request.current_password:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=400,
                 detail="Current password required for sensitive field changes",
             )
 
+    # Perform the update
     try:
         updated_user = db_user.update_user(
             db=db,
@@ -137,33 +133,21 @@ async def update_user(
             is_admin=is_admin,
         )
     except ValueError as e:
-        error_message = str(e)
-        if "Current password is incorrect" in error_message:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
-            )
-        elif "User not found" in error_message:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=error_message
-            )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request"
-        )
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Handle token regeneration if sensitive fields changed
-    response_data = {
+    # Token regen if sensitive data changed
+    response = {
         "message": "User updated successfully",
         "user": UserDisplay.from_orm(updated_user),
     }
 
     if is_updating_sensitive_field:
-        response_data.update(
-            {"access_token": create_access_token(updated_user), "token_type": "bearer"}
-        )
+        response.update({
+            "access_token": create_access_token(updated_user),
+            "token_type": "bearer",
+        })
 
-    return response_data
-
-from typing import List
+    return response
 
 # Admin sees users' list
 @router.get("/all", response_model=List[UserDisplay], summary="Admin gets list of all users")
@@ -173,23 +157,27 @@ def get_all_users(
 ):
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not authorized")
-    return db.query(Dbuser).all()
+    return db.query(Dbuser).filter(Dbuser.status != IsActive.deleted).all()
+
 
 
 # Admin sees user's info
-@router.get("/{user_id}", response_model=UserDisplay, summary="Admin gets a specific user's info")
+@router.get("/{user_id}", response_model=UserDisplay, summary="Get user info")
 def get_user_info(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
-):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
+    ):
     user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
-    if not user:
+
+    if not user or user.status == IsActive.deleted:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if current_user.id != user_id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized to access this user")
+
     return user
+
 
 
 #Admin deletes user
@@ -206,7 +194,7 @@ def delete_user_by_id(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db.delete(user)
+    user.status = IsActive.deleted
     db.commit()
     return {"detail": f"User with ID {user_id} has been deleted successfully"}
 

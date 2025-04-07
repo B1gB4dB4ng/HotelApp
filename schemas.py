@@ -3,6 +3,7 @@ from datetime import date, timedelta
 import re
 from typing import Annotated, Literal, Optional, List
 from pydantic import condecimal
+from db.models import IsActive
 
 from pydantic import (
     BaseModel,
@@ -44,6 +45,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     phone_number: Optional[str] = None
     is_superuser: Optional[bool] = None
+    status: Optional[IsActive] = None
     current_password: Optional[str] = None
 
     @field_validator("current_password")

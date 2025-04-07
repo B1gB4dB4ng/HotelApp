@@ -1,6 +1,7 @@
 from operator import and_, or_
+from typing import Optional
 from sqlalchemy.orm import Session
-from db.models import Dbbooking, Dbroom, Dbuser, IsActive, IsRoomStatus
+from db.models import Dbbooking, Dbhotel, Dbroom, IsActive, IsRoomStatus
 from schemas import BookingCreate, BookingUpdate
 from datetime import date
 
@@ -34,7 +35,7 @@ def check_room_availability(
         db.query(Dbroom)
         .filter(
             Dbroom.id == room_id,
-            Dbroom.is_active == IsActive.active,  
+            Dbroom.is_active == IsActive.active,
         )
         .first()
     )
@@ -99,15 +100,26 @@ def create_booking(db: Session, request: BookingCreate, user_id: int):
     return new_booking
 
 
-def get_booking_by_id(db: Session, booking_id: int):
-    return (
-        db.query(Dbbooking)
+def is_hotel_owner(db: Session, hotel_id: int, user_id: int) -> bool:
+    """Check if user owns the specified hotel"""
+    return db.query(
+        db.query(Dbhotel)
         .filter(
-            Dbbooking.id == booking_id,
-            Dbbooking.is_active == IsActive.active,
+            Dbhotel.id == hotel_id,
+            Dbhotel.owner_id == user_id,
+            Dbhotel.is_active == IsActive.active,
         )
-        .first()
-    )
+        .exists()
+    ).scalar()
+
+
+def get_booking_by_id(db: Session, booking_id: int, include_deleted: bool = False):
+    query = db.query(Dbbooking).filter(Dbbooking.id == booking_id)
+
+    if not include_deleted:
+        query = query.filter(Dbbooking.is_active != IsActive.deleted)
+
+    return query.first()
 
 
 def soft_delete_booking(db: Session, booking_id: int):
@@ -131,21 +143,31 @@ def soft_delete_booking(db: Session, booking_id: int):
     return booking  # Return the updated booking
 
 
-def get_all_bookings_for_admin(db: Session):
-    return db.query(Dbbooking).filter(Dbbooking.is_active == IsActive.active).all()
+def get_all_bookings(
+    db: Session,
+    user_id: Optional[int] = None,
+    hotel_id: Optional[int] = None,
+    room_id: Optional[int] = None,
+    booking_id: Optional[int] = None,
+    is_active: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    query = db.query(Dbbooking)
 
+    if user_id is not None:
+        query = query.filter(Dbbooking.user_id == user_id)
+    if hotel_id is not None:
+        query = query.filter(Dbbooking.hotel_id == hotel_id)
+    if room_id is not None:
+        query = query.filter(Dbbooking.room_id == room_id)
+    if booking_id is not None:
+        query = query.filter(Dbbooking.id == booking_id)
+    if is_active is not None:
+        query = query.filter(Dbbooking.is_active == is_active)
+    if status is not None:
+        query = query.filter(Dbbooking.status == status)
 
-def get_bookings_for_user(db: Session, user: Dbuser):
-    bookings = (
-        db.query(Dbbooking)
-        .filter(
-            Dbbooking.user_id == user.id,
-            Dbbooking.is_active == IsActive.active,
-        )
-        .all()
-    )
-
-    return bookings
+    return query.all()
 
 
 def update_booking_in_db(

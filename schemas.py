@@ -1,16 +1,23 @@
 from decimal import Decimal
 from datetime import date, timedelta
+from operator import is_
 import re
 from typing import Annotated, Literal, Optional
 from pydantic import (
-    BaseModel,  condecimal,
+    BaseModel,
+    condecimal,
     EmailStr,
     StringConstraints,
     field_serializer,
     field_validator,
-    condecimal
 )
 from enum import Enum
+
+
+class IsActive(Enum):
+    inactive = "inactive"
+    active = "active"
+    deleted = "deleted"
 
 
 class UserBase(BaseModel):
@@ -141,20 +148,28 @@ class BookingBase(BaseModel):
 
 
 class BookingCreate(BookingBase):
-    pass
+    user_id: int  # The user making the booking
+
+
+class BookingStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    cancelled = "cancelled"
 
 
 class BookingShow(BookingBase):
     id: int
     user_id: int
-    total_cost: Optional[float]  # This will be calculated and returned to the user
-    cancel_reason: Optional[str] = None  # Can be included if the booking is canceled
-
-    # Set the default value for status to "pending" in the response
-    status: Literal["pending", "confirmed", "cancelled"] = "pending"
+    total_cost: Optional[float]
+    cancel_reason: Optional[str] = None
+    is_active: str  # Change from IsActive enum to string
+    status: BookingStatus = BookingStatus.pending
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            Enum: lambda v: v.value  # This ensures enums are serialized as strings
+        }
 
 
 class BookingUpdate(BookingBase):
@@ -178,12 +193,12 @@ class PaymentShow(PaymentBase):
         from_attributes = True
 
 
-
-#-----------------------------------------------------------
+# -----------------------------------------------------------
 class IsReviewStatus(str, Enum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+
 
 class ReviewBase(BaseModel):
     user_id: int
@@ -193,6 +208,7 @@ class ReviewBase(BaseModel):
     comment: Optional[str]
     created_at: date
     status: IsReviewStatus = IsReviewStatus.pending
+
 
 class ReviewShow(ReviewBase):
     id: int
@@ -206,12 +222,12 @@ class ReviewUpdate(BaseModel):
     rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
     comment: Optional[str] = None
 
-#---------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 
 
+# -----------------------------------------------------------
 
-
-#-----------------------------------------------------------
 
 class HotelSearch(BaseModel):
     search_term: Optional[str] = None

@@ -146,6 +146,18 @@ class BookingBase(BaseModel):
     check_in_date: date = date.today()
     check_out_date: date = date.today() + timedelta(days=1)
 
+    @field_validator("room_id")
+    def validate_room_id(cls, v):
+        if v == 0:
+            raise ValueError("room_id cannot be 0")
+        return v
+
+    @field_validator("hotel_id")
+    def validate_hotel_id(cls, v):
+        if v == 0:
+            raise ValueError("hotel_id cannot be 0")
+        return v
+
 
 class BookingCreate(BookingBase):
     user_id: int  # The user making the booking

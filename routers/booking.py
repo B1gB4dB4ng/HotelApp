@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status as STATUS
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from auth.oauth2 import get_current_user
@@ -6,6 +6,7 @@ from db.database import get_db
 from db import db_booking
 from db.models import Dbbooking, Dbhotel, Dbroom, Dbuser
 from schemas import BookingCreate, BookingShow, BookingStatus, BookingUpdate, IsActive
+
 
 router = APIRouter(prefix="/booking", tags=["Booking"])
 
@@ -86,26 +87,41 @@ def get_booking(
     return booking
 
 
-@router.delete("/{booking_id}", summary="Delete Booking")
+@router.delete(
+    "/bookings/{booking_id}",
+    summary="Delete Booking",
+    status_code=STATUS.HTTP_204_NO_CONTENT,
+    responses={
+        204: {"description": "Booking deleted successfully"},
+        403: {"description": "Not authorized to delete this booking"},
+        404: {"description": "Booking not found"},
+    },
+)
 def delete_booking(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
+    # First check if booking exists
     booking = db_booking.soft_delete_booking(db, booking_id)
-
     if not booking:
         raise HTTPException(
-            status_code=404, detail=f"Booking with ID {booking_id} not found"
+            status_code=STATUS.HTTP_404_NOT_FOUND,
+            detail=f"Booking with ID {booking_id} not found",
         )
 
+    # Check authorization
     if not user.is_superuser and booking.user_id != user.id:
         raise HTTPException(
-            status_code=403,
-            detail=f"Not authorized to delete booking with ID {booking_id}",
+            status_code=STATUS.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this booking",
         )
 
-    return {"message": f"Booking with ID {booking_id}  deleted successfully"}
+    # Perform soft delete
+    db_booking.soft_delete_booking(db, booking_id)
+
+    # No content response is standard for DELETE operations
+    return Response(status_code=STATUS.HTTP_204_NO_CONTENT)
 
 
 @router.put("/{booking_id}", response_model=BookingShow, summary="Update Booking")
@@ -152,57 +168,90 @@ def update_booking(
 @router.get(
     "/",
     response_model=List[BookingShow],
-    summary="Get All Bookings with filters",
+    summary="Get filtered bookings",
+    description="Retrieve bookings with optional filters. Regular users can only view their own bookings.",
+    responses={
+        STATUS.HTTP_200_OK: {"description": "List of matching bookings"},
+        STATUS.HTTP_403_FORBIDDEN: {
+            "description": "Not authorized to access these bookings"
+        },
+        STATUS.HTTP_404_NOT_FOUND: {
+            "description": "No bookings found matching criteria"
+        },
+    },
 )
 def get_all_bookings_by_filter(
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
     user_id: Optional[int] = Query(
-        None, gt=0, description="Filter by user ID (must be a positive integer)"
+        None,
+        gt=0,
+        description="Filter by user ID (must be positive integer). Non-admins can only filter by their own ID.",
     ),
     hotel_id: Optional[int] = Query(
-        None, gt=0, description="Filter by hotel ID (must be a positive integer)"
+        None,
+        gt=0,
+        description="Filter by hotel ID (must be positive integer). Non-admins can only filter by hotels they own.",
     ),
     room_id: Optional[int] = Query(
-        None, gt=0, description="Filter by room ID (must be a positive integer)"
+        None,
+        gt=0,
+        description="Filter by room ID (must be positive integer). Non-admins can only filter by rooms in hotels they own.",
     ),
     booking_id: Optional[int] = Query(
-        None, gt=0, description="Filter by booking ID (must be a positive integer)"
+        None,
+        gt=0,
+        description="Filter by specific booking ID (must be positive integer)",
     ),
-    is_active: Optional[IsActive] = Query(None, description="Filter by active status "),
+    is_active: Optional[IsActive] = Query(
+        None,
+        description="Filter by active status. Non-admins cannot view deleted bookings.",
+    ),
     status: Optional[BookingStatus] = Query(
-        None, description="Filter by booking status"
+        None,
+        description="Filter by booking status (e.g., 'confirmed', 'pending', 'cancelled')",
     ),
 ):
     # Validate user permissions
     if not user.is_superuser:
         if is_active == IsActive.deleted:
-            raise HTTPException(403, "Not authorized to view  bookings")
+            raise HTTPException(
+                status_code=STATUS.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view deleted bookings",
+            )
 
         if user_id and user_id != user.id:
-            raise HTTPException(403, "Not authorized to view other users' bookings")
+            raise HTTPException(
+                status_code=STATUS.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view other users' bookings",
+            )
 
         if hotel_id:
-            if (
-                not db.query(Dbhotel)
+            hotel = (
+                db.query(Dbhotel)
                 .filter(Dbhotel.id == hotel_id, Dbhotel.owner_id == user.id)
                 .first()
-            ):
+            )
+            if not hotel:
                 raise HTTPException(
-                    403, "Not authorized to view bookings for this hotel"
+                    status_code=STATUS.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view bookings for this hotel",
                 )
 
         if room_id:
-            if (
-                not db.query(Dbroom)
+            room = (
+                db.query(Dbroom)
                 .join(Dbhotel)
                 .filter(Dbroom.id == room_id, Dbhotel.owner_id == user.id)
                 .first()
-            ):
+            )
+            if not room:
                 raise HTTPException(
-                    403, "Not authorized to view bookings for this room"
+                    status_code=STATUS.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view bookings for this room",
                 )
 
+    # Apply filters
     bookings = db_booking.get_all_bookings(
         db=db,
         user_id=user_id if user.is_superuser else (user_id or user.id),
@@ -214,6 +263,9 @@ def get_all_bookings_by_filter(
     )
 
     if not bookings:
-        raise HTTPException(404, "No bookings found")
+        raise HTTPException(
+            status_code=STATUS.HTTP_404_NOT_FOUND,
+            detail="No bookings found matching the criteria",
+        )
 
     return bookings

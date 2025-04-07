@@ -146,6 +146,7 @@ class IsReviewStatus(PyEnum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+    deleted = "deleted"
 
 class Dbreview(Base):
     __tablename__ = "review"

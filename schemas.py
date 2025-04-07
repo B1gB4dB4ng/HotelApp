@@ -184,19 +184,20 @@ class IsReviewStatus(str, Enum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+    deleted = "deleted"
 
 class ReviewBase(BaseModel):
-    user_id: int
+    #user_id: int
     hotel_id: int
     booking_id: int
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
-    created_at: date
-    status: IsReviewStatus = IsReviewStatus.pending
 
 class ReviewShow(ReviewBase):
     id: int
-
+    user_id : int
+    created_at: date
+    status: IsReviewStatus
     class Config:
         from_attributes = True
 
@@ -205,6 +206,7 @@ class ReviewShow(ReviewBase):
 class ReviewUpdate(BaseModel):
     rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
     comment: Optional[str] = None
+    status: Optional[IsReviewStatus] = None  # Admin only
 
 #---------------------------------------------------------------------
 

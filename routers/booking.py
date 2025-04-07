@@ -142,7 +142,7 @@ def update_booking(
 
     if not updated_booking:
         raise HTTPException(
-            status_code=404, detail="Booking not found or could not be updated"
+            status_codep=404, detail="Booking not found or could not be updated"
         )
 
     return updated_booking

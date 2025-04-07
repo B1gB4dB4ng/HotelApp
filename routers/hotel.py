@@ -37,6 +37,38 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
     return hotel
 
 
+
+# Combine search and filter logic into one endpoint
+@router.get(
+    "/", description="Get filtered/searched hotels ", response_model=List[HotelDisplay]
+)
+def get_hotels(
+    search_term: Optional[str] = None,
+    location: Optional[str] = Query(None, min_length=1),
+    owner_id: Optional[int] = None,
+    is_approved: Optional[bool] = None,
+    db: Session = Depends(get_db),
+):
+    filters = {
+        "search_term": search_term,
+        "location": location.strip() if location else None,
+        "skip": 0,
+        "limit": 100,
+    }
+
+    if owner_id is not None:
+        filters["owner_id"] = owner_id
+
+    if is_approved is not None:
+        filters["is_approved"] = is_approved
+    # Якщо is_approved = None -> нічого не додаємо, і повернуться всі (і затверджені, і ні)
+
+    return db_hotel.combined_search_filter(db, **filters)
+
+
+
+"""
+Previous version of get hotels with authorization
 # Combine search and filter logic into one endpoint
 @router.get(
     "/", description="Get filtered/searched hotels ", response_model=List[HotelDisplay]
@@ -85,6 +117,8 @@ def get_hotels(
 
     # Use the COMBINED function from db_hotel.py
     return db_hotel.combined_search_filter(db, **filters)
+
+"""
 
 # update hotels
 @router.put(

@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
-from db.models import Dbhotel, IsActive
+from db.models import Dbhotel, IsActive, Dbuser
 from schemas import HotelBase
 from sqlalchemy import or_
 from typing import Optional
+from fastapi import BackgroundTasks
+from email_utils import send_email
 
 
 def create_hotel(db: Session, request: HotelBase, owner_id: int):
@@ -33,12 +35,24 @@ def create_hotel(db: Session, request: HotelBase, owner_id: int):
 
 
 # delete hotel
-def delete_hotel(db: Session, id: int):
+def delete_hotel(db: Session, id: int, background_tasks: BackgroundTasks):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
+    print(hotel)
 
     if hotel:
         hotel.is_active = IsActive.deleted  # Mark hotel as deleted
         db.commit()
+
+        # Fetch the owner (Dbuser) to get the name
+        owner = db.query(Dbuser).filter(Dbuser.id == hotel.owner_id).first()
+
+# Add the background email sending task
+        subject = "Hotel Deletion Notification"
+        body = f"Dear {owner.username}, \n\nYour hotel {hotel.name} has been successfully removed from our platform. If this was a mistake, please contact support.\n\nBest regards,\nYour Hotel Management Team."
+        
+        # Use background task to send the email
+        background_tasks.add_task(send_email, hotel.email, subject, body)
+
         return f"Hotel with ID {id} deleted successfully."  # Return success message
     else:
         return None  # Return None if hotel not found

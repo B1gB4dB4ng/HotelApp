@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_hotel
@@ -6,6 +6,7 @@ from db.models import Dbuser
 from schemas import HotelBase, HotelDisplay, UpdateHotelResponse
 from typing import Optional, List
 from auth.oauth2 import get_current_user
+from email_utils import send_email
 
 
 router = APIRouter(prefix="/hotel", tags=["Hotel"])
@@ -104,6 +105,7 @@ def delete_hotel(
     id: int,
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None
 ):
     hotel = db_hotel.get_hotel(db, id)
 
@@ -116,6 +118,6 @@ def delete_hotel(
         )
 
     # Call delete_hotel from db_hotel and get the result
-    delete_message = db_hotel.delete_hotel(db, id)
+    delete_message = db_hotel.delete_hotel(db, id, background_tasks)
 
     return {"message": delete_message}  # Return success message

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus
+from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus,ReviewCreate
 from db import db_review
 from typing import List, Optional
 from datetime import date
@@ -15,22 +15,20 @@ router = APIRouter(prefix="/review", tags=["Review"])
 # -------------------------------------------------------------------------------------------------
 # submiting a review
 
-
 @router.post(
-    "/{user_id}", status_code=status.HTTP_201_CREATED, response_model=ReviewShow
+    "/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow
 )
 def submit_review(
-    user_id: int,
-    request: ReviewBase,
+    request: ReviewCreate,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
     # Check if user exists
-    user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
+    user = db.query(Dbuser).filter(Dbuser.id == request.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     # Only the current user can submit review
-    if current_user.id != user_id:
+    if current_user.id != request.user_id:
         raise HTTPException(
             status_code=403, detail="You cannot submit a review for another user."
         )
@@ -45,7 +43,7 @@ def submit_review(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     # Validate that the booking belongs to the user
-    if booking.user_id != user_id:
+    if booking.user_id != request.user_id:
         raise HTTPException(
             status_code=403, detail="You can only review your own bookings."
         )
@@ -72,8 +70,7 @@ def submit_review(
         )
 
     # All validations passed → create the review
-    return db_review.create_review(db=db, request=request, user_id=user_id)
-
+    return db_review.create_review(db=db, request=request)
 
 # -------------------------------------------------------------------------------------------------
 # Get the review with review_id

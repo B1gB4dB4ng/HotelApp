@@ -34,9 +34,9 @@ def submit_hotel(
 @router.get("/{id}", response_model=HotelDisplay)
 def get_hotel(id: int, db: Session = Depends(get_db)):
     hotel = db_hotel.get_hotel(db, id)
-    
-    # Return 404 if hotel doesn't exist or is inactive/deleted
-    if not hotel or hotel.is_active != IsActive.active:
+
+    # Only exclude hotels marked as deleted
+    if not hotel or hotel.is_active == IsActive.deleted:
         raise HTTPException(status_code=404, detail="Hotel not found")
 
     return hotel

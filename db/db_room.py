@@ -77,12 +77,14 @@ def get_rooms_by_hotel(
 ):
     query = db.query(Dbroom).filter(
         Dbroom.hotel_id == hotel_id,
-        Dbroom.is_active == IsActive.active
+        Dbroom.is_active != IsActive.deleted  # ✅ include active/inactive, exclude deleted
     )
+
     if status:
         query = query.filter(Dbroom.status == status)
 
     return query.offset(skip).limit(limit).all()
+
 
 
 # Search a Room Using Different Filters
@@ -97,7 +99,7 @@ def advanced_room_search(
     check_in_date: Optional[date] = None,
     check_out_date: Optional[date] = None,
 ) -> List[Dbroom]:
-    query = db.query(Dbroom).filter(Dbroom.is_active == IsActive.active)
+    query = db.query(Dbroom).filter(Dbroom.is_active != IsActive.deleted)  # ✅ exclude deleted
 
     if search_term:
         pattern = f"%{search_term}%"

@@ -53,7 +53,8 @@ def combined_search_filter(
     skip: int = 0,
     limit: int = 100,
 ):
-    query = db.query(Dbhotel).filter(Dbhotel.is_active == "active")
+    query = db.query(Dbhotel).filter(Dbhotel.is_active != "deleted")
+
 
     if search_term:
         query = query.filter(Dbhotel.name.ilike(f"%{search_term}%"))
@@ -68,6 +69,7 @@ def combined_search_filter(
         query = query.filter(Dbhotel.avg_review_score <= max_rating)
 
     return query.offset(skip).limit(limit).all()
+
 
 
 def get_all_hotels(db: Session):

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import re
 from typing import Annotated, Literal, Optional, List
 from pydantic import condecimal
@@ -7,11 +7,14 @@ from db.models import IsActive
 
 from pydantic import (
     BaseModel,
+    condecimal,
     EmailStr,
     StringConstraints,
     Field,
     field_validator,
     field_serializer,
+    field_validator,
+    condecimal
 )
 from enum import Enum
 
@@ -168,9 +171,27 @@ class BookingBase(BaseModel):
     check_in_date: date = date.today()
     check_out_date: date = date.today() + timedelta(days=1)
 
+    @field_validator("room_id")
+    def validate_room_id(cls, v):
+        if v == 0:
+            raise ValueError("room_id cannot be 0")
+        return v
+
+    @field_validator("hotel_id")
+    def validate_hotel_id(cls, v):
+        if v == 0:
+            raise ValueError("hotel_id cannot be 0")
+        return v
+
 
 class BookingCreate(BookingBase):
-    pass
+    user_id: int  # The user making the booking
+
+
+class BookingStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    cancelled = "cancelled"
 
 
 class BookingShow(BookingBase):
@@ -178,51 +199,132 @@ class BookingShow(BookingBase):
     user_id: int
     total_cost: Optional[float]
     cancel_reason: Optional[str] = None
-    status: Literal["pending", "confirmed", "cancelled"] = "pending"
+    is_active: str  # Change from IsActive enum to string
+    status: BookingStatus = BookingStatus.pending
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            Enum: lambda v: v.value  # This ensures enums are serialized as strings
+        }
 
 
 class BookingUpdate(BookingBase):
-    status: Optional[Literal["pending", "confirmed", "cancelled"]] = "pending"
-    cancel_reason: Optional[str] = None
+    status: Optional[Literal["pending", "confirmed", "cancelled"]] = (
+        "pending"  # Default to "pending"
+    )
+    cancel_reason: Optional[str] = None  # Optional reason, can be filled when canceling
 
-# Payment
+
+
+
+
+class PaymentStatus(str, Enum):
+    pending = "pending"
+    completed = "completed"
+    failed = "failed"
+    refunded = "refunded"
+
 
 class PaymentBase(BaseModel):
     booking_id: int
-    amount: Decimal
-    status: Literal["pending", "completed", "failed", "refunded"]
     payment_date: date
 
+    card_number: str = Field(..., min_length=16, max_length=16)
+    expiry_month: int = Field(..., ge=1, le=12)
+    expiry_year: int = Field(..., ge=2024)
+    cvv: str = Field(..., min_length=3, max_length=4)
 
-class PaymentShow(PaymentBase):
+    @field_validator("card_number")
+    @classmethod
+    def validate_card_number(cls, v):
+        v = v.replace(" ", "")  # Clean up spaces
+        if not v.isdigit():
+            raise ValueError("Card number must contain digits only.")
+        if int(v[-1]) % 2 != 0:
+            raise ValueError(
+                "Fake check failed: card is invalid because it ends in an odd digit."
+            )
+        if not cls.luhn_check(v):
+            raise ValueError("Card number is invalid (Luhn check failed).")
+        return v
+
+    @field_validator("cvv")
+    @classmethod
+    def validate_cvv(cls, v):
+        if not v.isdigit():
+            raise ValueError("CVV must contain digits only.")
+        return v
+
+    @field_validator("expiry_year")
+    @classmethod
+    def validate_expiry_date(cls, year, info):
+        month = info.data.get("expiry_month")
+        if month is None:
+            raise ValueError("Expiry month is required")
+        last_day = monthrange(year, month)[1]
+        expiry = datetime(year, month, last_day, 23, 59, 59)
+        if expiry < datetime.now():
+            raise ValueError("Card is expired.")
+        return year
+
+    @staticmethod
+    def luhn_check(card_number: str) -> bool:
+        digits = [int(d) for d in card_number]
+        digits.reverse()
+        total = 0
+        for index, digit in enumerate(digits):
+            if index % 2 == 1:
+                doubled = digit * 2
+                if doubled > 9:
+                    doubled -= 9
+                total += doubled
+            else:
+                total += digit
+        return total % 10 == 0
+
+
+# ✅ Schema for creating a payment
+class PaymentCreate(PaymentBase):
+    amount: Decimal
+    status: PaymentStatus = PaymentStatus.pending  # ✅ Now uses Enum with default
+
+
+# ✅ Schema for showing a payment
+class PaymentShow(BaseModel):
     id: int
+    booking_id: int
+    amount: Decimal
+    status: PaymentStatus  # ✅ Now uses Enum
+    payment_date: date
 
     class Config:
         from_attributes = True
 
 # Review
 
-
-#-----------------------------------------------------------
+# -----------------------------------------------------------
+# -----------------------------------------------------------
 class IsReviewStatus(str, Enum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
+    deleted = "deleted"
+
 
 class ReviewBase(BaseModel):
-    user_id: int
+    # user_id: int
     hotel_id: int
     booking_id: int
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
-    created_at: date
-    status: IsReviewStatus = IsReviewStatus.pending
+
 
 class ReviewShow(ReviewBase):
     id: int
+    user_id: int
+    created_at: date
+    status: IsReviewStatus
 
     class Config:
         from_attributes = True
@@ -232,6 +334,7 @@ class ReviewShow(ReviewBase):
 class ReviewUpdate(BaseModel):
     rating: Optional[condecimal(gt=0, le=5, max_digits=2, decimal_places=1)] = None
     comment: Optional[str] = None
+    status: Optional[IsReviewStatus] = None  # Admin only
 
 
 class HotelSearch(BaseModel):

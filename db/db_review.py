@@ -1,43 +1,46 @@
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from schemas import ReviewBase
+from db.models import Dbreview
+from schemas import ReviewBase, IsReviewStatus, ReviewUpdate
 from sqlalchemy import func
-from db.models import Dbreview, Dbhotel
+from db.models import Dbreview, Dbhotel, Dbuser
 from typing import Optional, List
+from datetime import date
 
 
 # ------------------------------------------------------------------------------------------
-# submit a review
-def create_review(db: Session, request: ReviewBase):
+# # submit a review
+def create_review(db: Session, request: ReviewBase, user_id: int):
     # Step 1: Save the review
     db_review = Dbreview(
-        user_id=request.user_id,
+        user_id=user_id,
         hotel_id=request.hotel_id,
         booking_id=request.booking_id,
         rating=request.rating,
         comment=request.comment,
+        status=IsReviewStatus.pending,  # ✅ Explicitly set pending status
     )
     db.add(db_review)
     db.commit()
     db.refresh(db_review)
 
-    # Step 2: Recalculate average rating for the hotel
-    # Get all existing ratings for the hotel (excluding the new one just added)
-    ratings_query = db.query(Dbreview).filter(Dbreview.hotel_id == request.hotel_id)
-    rating_count = ratings_query.count()
-    total_rating = (
-        db.query(func.sum(Dbreview.rating))
-        .filter(Dbreview.hotel_id == request.hotel_id)
-        .scalar()
-    )
+    # ✅ Step 2: Only update avg rating if the review is confirmed
+    if db_review.status == IsReviewStatus.confirmed:
+        total_rating, count = (
+            db.query(func.sum(Dbreview.rating), func.count(Dbreview.rating))
+            .filter(
+                Dbreview.hotel_id == request.hotel_id,
+                Dbreview.status == IsReviewStatus.confirmed,
+            )
+            .first()
+        )
 
-    # Step 3: Calculate and update average
-    avg_rating = (
-        round(total_rating / rating_count, 2) if rating_count else request.rating
-    )
+        avg_rating = round(total_rating / count, 2) if count else request.rating
 
-    hotel = db.query(Dbhotel).filter(Dbhotel.id == request.hotel_id).first()
-    hotel.avg_review_score = avg_rating
-    db.commit()
+        hotel = db.query(Dbhotel).filter(Dbhotel.id == request.hotel_id).first()
+        if hotel:
+            hotel.avg_review_score = avg_rating
+            db.commit()
 
     return db_review
 
@@ -45,8 +48,6 @@ def create_review(db: Session, request: ReviewBase):
 # ------------------------------------------------------------------------------------------
 # def get_all_reviews_by_user(db: Session, user_id: int):
 #     return db.query(Dbreview).filter(Dbreview.user_id == user_id).all()
-
-
 # ------------------------------------------------------------------------------------------
 # get review by id
 def get_review_by_review_id(db: Session, review_id: int):
@@ -63,6 +64,9 @@ def get_filtered_reviews(
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    search: Optional[str] = None,
 ) -> List[Dbreview]:
     query = db.query(Dbreview)
 
@@ -83,6 +87,15 @@ def get_filtered_reviews(
 
     if status is not None:
         query = query.filter(Dbreview.status == status)
+
+    if start_date is not None:
+        query = query.filter(Dbreview.created_at >= start_date)
+
+    if end_date is not None:
+        query = query.filter(Dbreview.created_at <= end_date)
+
+    if search is not None:
+        query = query.filter(Dbreview.comment.ilike(f"%{search}%"))
 
     return query.all()
 
@@ -140,11 +153,15 @@ def booking_belongs_to_user(db: Session, user_id: int, booking_id: int) -> bool:
 # ------------------------------------------------------------------------------------------
 # update a review
 def update_review_by_id(
-    db: Session, review_id: int, new_rating: Optional[float], new_comment: Optional[str]
-) -> Dbreview:
+    db: Session,
+    review_id: int,
+    new_rating: Optional[float],
+    new_comment: Optional[str],
+    new_status: Optional[str] = None,  # ✅ New
+) -> Optional[Dbreview]:
     review_query = db.query(Dbreview).filter(Dbreview.id == review_id)
-
     review = review_query.first()
+
     if not review:
         return None
 
@@ -153,6 +170,8 @@ def update_review_by_id(
         update_data["rating"] = new_rating
     if new_comment is not None:
         update_data["comment"] = new_comment
+    if new_status is not None:  # ✅ Add status update
+        update_data["status"] = new_status
 
     review_query.update(update_data)
     db.commit()
@@ -164,6 +183,6 @@ def update_review_by_id(
 def soft_delete_review_by_id(db: Session, review_id: int):
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if review:
-        review.status = "deleted"
+        review.status = IsReviewStatus.deleted
         db.commit()
     return review

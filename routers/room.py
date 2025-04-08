@@ -110,7 +110,7 @@ def list_rooms(
         raise HTTPException(status_code=404, detail="No available rooms found")
     return rooms
 
-
+#......
 # Soft-delete a room
 @router.delete("/{room_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Soft delete room")
 def delete_room(

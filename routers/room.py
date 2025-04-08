@@ -8,12 +8,17 @@ from decimal import Decimal
 from typing import Optional, List
 from auth.oauth2 import get_current_user
 from datetime import date
+from fastapi import Response
+from db.models import IsActive, IsRoomStatus
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import status
+
 
 router = APIRouter(prefix="/room", tags=["Room"])
 
 
 # Submit a new room
-@router.post("/submit/{hotel_id}", response_model=RoomDisplay)
+@router.post("/submit/{hotel_id}", response_model=RoomDisplay, status_code=201)
 def submit_room(
     hotel_id: int,
     request: RoomBase,
@@ -107,28 +112,22 @@ def list_rooms(
 
 
 # Soft-delete a room
-@router.delete("/{room_id}", summary="Delete a room")
+@router.delete("/{room_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Soft delete room")
 def delete_room(
     room_id: int,
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
-    # Fetch the room
     room = db_room.get_room(db, room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    # Check authorization (owner or admin)
-    hotel = db.query(Dbhotel).filter(Dbhotel.id == room.hotel_id).first()
+    hotel = db_hotel.get_hotel(db, room.hotel_id)
     if not hotel or (hotel.owner_id != user.id and not user.is_superuser):
         raise HTTPException(status_code=403, detail="Not authorized to delete this room")
 
-    # Perform soft delete
-    deleted_room = db_room.delete_room(db, room_id)
-    if not deleted_room:
-        raise HTTPException(status_code=400, detail="Room could not be deleted")
+    room.is_active = IsActive.deleted
+    room.status = IsRoomStatus.unavailable
+    db.commit()
 
-    return {"message": f"Room {room_id} deleted successfully"}
-
-
-
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

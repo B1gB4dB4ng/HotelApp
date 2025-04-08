@@ -6,12 +6,14 @@ from db.models import Dbuser
 from schemas import HotelBase, HotelDisplay, UpdateHotelResponse
 from typing import Optional, List
 from auth.oauth2 import get_current_user
+from fastapi import Response
+from db.models import IsActive
 
 
 router = APIRouter(prefix="/hotel", tags=["Hotel"])
 
 
-@router.post("/submit", response_model=HotelDisplay)
+@router.post("/submit", response_model=HotelDisplay, status_code=201)
 def submit_hotel(
     request: HotelBase,
     db: Session = Depends(get_db),
@@ -32,10 +34,12 @@ def submit_hotel(
 @router.get("/{id}", response_model=HotelDisplay)
 def get_hotel(id: int, db: Session = Depends(get_db)):
     hotel = db_hotel.get_hotel(db, id)
-    if not hotel:
+    
+    # Return 404 if hotel doesn't exist or is inactive/deleted
+    if not hotel or hotel.is_active != IsActive.active:
         raise HTTPException(status_code=404, detail="Hotel not found")
-    return hotel
 
+    return hotel
 
 # Combine search and filter logic into one endpoint
 @router.get("/", response_model=List[HotelDisplay])
@@ -97,6 +101,7 @@ def update_hotel(
 ### DELETE HOTEL (Only Owner or Super Admin)
 @router.delete(
     "/{id}",
+    status_code=204,
     summary="Remove hotel",
     description="Only owner or super admin can delete",
 )
@@ -116,6 +121,6 @@ def delete_hotel(
         )
 
     # Call delete_hotel from db_hotel and get the result
-    delete_message = db_hotel.delete_hotel(db, id)
+    db_hotel.delete_hotel(db, id)
 
-    return {"message": delete_message}  # Return success message
+    return Response(status_code=204)  # No content returned

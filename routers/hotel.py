@@ -46,6 +46,7 @@ def get_hotels(
     location: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
+               
     # Use the COMBINED function (from db_hotel.py)
     return db_hotel.combined_search_filter(
         db,

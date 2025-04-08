@@ -61,7 +61,7 @@ def get_filtered_reviews(
     search: Optional[str] = None,
 ) -> List[Dbreview]:
     query = db.query(Dbreview).filter(Dbreview.status != "deleted")
-
+#
     if user_id is not None:
         query = query.filter(Dbreview.user_id == user_id)
 

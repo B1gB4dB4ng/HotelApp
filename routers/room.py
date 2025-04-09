@@ -8,7 +8,6 @@ from decimal import Decimal
 from typing import Optional, List
 from auth.oauth2 import get_current_user
 from datetime import date
-from fastapi import Response
 from db.models import IsActive, IsRoomStatus
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi import status
@@ -18,7 +17,7 @@ router = APIRouter(prefix="/room", tags=["Room"])
 
 
 # Submit a new room
-@router.post("/submit/{hotel_id}", response_model=RoomDisplay, status_code=201)
+@router.post("/", response_model=RoomDisplay, status_code=201)
 def submit_room(
     hotel_id: int,
     request: RoomBase,
@@ -26,8 +25,11 @@ def submit_room(
     user: Dbuser = Depends(get_current_user),
 ):
     hotel = db_hotel.get_hotel(db, hotel_id)
-    if not hotel:
+    if not hotel or hotel.is_active == "deleted":
         raise HTTPException(status_code=404, detail="Hotel not found")
+    
+    if not hotel.is_approved:
+        raise HTTPException(status_code=403, detail="Hotel is not approved yet")
 
     if hotel.owner_id != user.id and not user.is_superuser:
         raise HTTPException(status_code=403, detail="Not authorized")

@@ -316,7 +316,7 @@ class PaymentBase(BaseModel):
 # Schema for creating a payment
 class PaymentCreate(PaymentBase):
     amount: Decimal
-    status: PaymentStatus = PaymentStatus.pending  
+      
 
 
 # Schema for showing a payment

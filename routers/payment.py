@@ -8,6 +8,7 @@ from db.models import Dbuser, Dbbooking,Dbpayment
 from decimal import Decimal
 from typing import List, Optional
 from datetime import date
+from db.db_payment import search_payments 
 
 
 
@@ -50,7 +51,7 @@ def make_payment_for_user(
         )
 
     # when the card is valid and the amount is exact the payment is completed
-    payment_status = PaymentStatus.completed
+    payment_status = "completed"
 
     # Save payment
     saved_payment = db_payment.create_payment(
@@ -99,10 +100,11 @@ def get_payment_with_payment_id(
     return payment
 
 #-------------------------------------------------------------------------------------------
-@router.get("/", response_model=List[PaymentShow], summary="Search all payments (superadmin only)")
+@router.get("/", response_model=List[PaymentShow], summary="Search all payments (owner and superadmin)")
 def search_payments_superadmin_only(
     status: Optional[PaymentStatus] = Query(None, description="Filter by status"),
-    user_id: Optional[int] = Query(None, gt=0, description="User ID"),
+    user_id: Optional[int] = Query(None, gt=0, description="Filter User ID"),
+    booking_id: Optional[int] = Query(None, gt=0, description="Filter Booking ID"),
     start_date: Optional[date] = Query(None, description="Start of payment date"),
     end_date: Optional[date] = Query(None, description="End of payment date"),
     min_amount: Optional[Decimal] = Query(None, gt=0, description="Minimum amount"),
@@ -110,37 +112,39 @@ def search_payments_superadmin_only(
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    # 🔐 Superadmin-only access check
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Access denied. Superadmin only.")
+    # Authorization: Only superadmins can query for other users
+    if not current_user.is_superuser and user_id is not None and user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not allowed to search for other users' payments.")
 
-    query = db.query(Dbpayment)
-
-    # ✅ Apply optional filters
-    if user_id:
-        query = query.filter(Dbpayment.user_id == user_id)
-
-    if status:
-        query = query.filter(Dbpayment.status == status.value)
-
-    if start_date:
-        query = query.filter(Dbpayment.payment_date >= start_date)
-
-    if end_date:
-        query = query.filter(Dbpayment.payment_date <= end_date)
-
+    # Validate amount range
     if min_amount and max_amount and min_amount > max_amount:
         raise HTTPException(status_code=400, detail="min_amount cannot be greater than max_amount")
 
-    if min_amount:
-        query = query.filter(Dbpayment.amount >= min_amount)
+    # Check if user exists
+    if user_id:
+        user_exists = db.query(Dbuser).filter(Dbuser.id == user_id).first()
+        if not user_exists:
+            raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found.")
 
-    if max_amount:
-        query = query.filter(Dbpayment.amount <= max_amount)
+    # Check if booking exists
+    if booking_id:
+        booking_exists = db.query(Dbbooking).filter(Dbbooking.id == booking_id).first()
+        if not booking_exists:
+            raise HTTPException(status_code=404, detail=f"Booking with ID {booking_id} not found.")
 
-    results = query.all()
-     #If no payments found, raise 404 with custom message
+    results = search_payments(
+        db=db,
+        status=status,
+        user_id=user_id,
+        booking_id=booking_id,
+        start_date=start_date,
+        end_date=end_date,
+        min_amount=min_amount,
+        max_amount=max_amount
+    )
+
     if not results:
         raise HTTPException(status_code=404, detail="No matching payments found.")
 
     return results
+

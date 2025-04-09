@@ -13,35 +13,56 @@ from datetime import date
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
-@router.post("/{user_id}", response_model=PaymentShow)
+@router.post("/", response_model=PaymentShow)
 def make_payment_for_user(
-    user_id: int,
     payment: PaymentCreate,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user)
 ):
-    if user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not allowed to pay for another user.")
-
-    # Always successful payment
-    payment_status = PaymentStatus.completed
-
-    # Get booking and amount
+   
     booking = db.query(Dbbooking).filter(Dbbooking.id == payment.booking_id).first()
+    if current_user.id != payment.user_id:
+        raise HTTPException(status_code=403,detail="You are not allowed to make a payment for another user.")
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.user_id != user_id:
+    if booking.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="This booking doesn't belong to you.")
+    
+    existing_payment = db_payment.get_payment_by_booking(db, payment.booking_id)
+    if existing_payment:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment already exists for this booking."
+        )
+    
+    # Check amount
+    expected_amount: Decimal = booking.total_cost
 
-    total_amount: Decimal = booking.total_cost
+    if payment.amount < expected_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient amount. You must pay exactly {expected_amount}."
+        )
+    elif payment.amount > expected_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Overpayment detected. You must pay exactly {expected_amount}."
+        )
+
+    # when the card is valid and the amount is exact the payment is completed
+    payment_status = PaymentStatus.completed
 
     # Save payment
     saved_payment = db_payment.create_payment(
-        db, payment, user_id=user_id, status=payment_status, amount=total_amount
+        db,
+        payment,
+        user_id=current_user.id,
+        status=payment_status,
+        amount=payment.amount
     )
 
-    # Update booking status in booking table if payment successful
-    if payment_status == "completed":
+    # Update booking status if payment completed
+    if payment_status == PaymentStatus.completed:
         booking.status = "confirmed"
         db.commit()
 

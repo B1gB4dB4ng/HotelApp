@@ -50,6 +50,8 @@ def combined_search_filter(
     location: Optional[str] = None,
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
+    is_approved: Optional[bool] = None,
+    owner_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
 ):
@@ -67,6 +69,13 @@ def combined_search_filter(
 
     if max_rating is not None:
         query = query.filter(Dbhotel.avg_review_score <= max_rating)
+    
+    if is_approved is not None:
+        query = query.filter(Dbhotel.is_approved == is_approved)
+
+    if owner_id is not None:
+        query = query.filter(Dbhotel.owner_id == owner_id)
+    
 
     return query.offset(skip).limit(limit).all()
 

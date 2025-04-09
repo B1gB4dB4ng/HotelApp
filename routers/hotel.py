@@ -48,14 +48,23 @@ def get_hotels(
     location: Optional[str] = Query(None, min_length=1),
     min_rating: Optional[float] = Query(None, ge=1.0, le=5.0),
     max_rating: Optional[float] = Query(None, ge=1.0, le=5.0),
+    owner_id: Optional[int] = None,
+    is_approved: Optional[bool] = None,
     db: Session = Depends(get_db),
 ):
+    if owner_id is not None:
+        user = db.query(Dbuser).filter(Dbuser.id == owner_id).first()
+        if not user:
+            return Response(status_code=204)
+
     return db_hotel.combined_search_filter(
         db=db,
         search_term=search_term,
         location=location.strip() if location else None,
         min_rating=min_rating,
         max_rating=max_rating,
+        is_approved=is_approved,
+        owner_id=owner_id,
         skip=0,
         limit=100,
     )

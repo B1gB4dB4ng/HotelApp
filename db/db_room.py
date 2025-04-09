@@ -90,6 +90,7 @@ def get_rooms_by_hotel(
 # Search a Room Using Different Filters
 def advanced_room_search(
     db: Session,
+    hotel_id: Optional[int] = None,
     search_term: Optional[str] = None,
     wifi: Optional[bool] = None,
     air_conditioner: Optional[bool] = None,
@@ -98,11 +99,18 @@ def advanced_room_search(
     max_price: Optional[Decimal] = None,
     check_in_date: Optional[date] = None,
     check_out_date: Optional[date] = None,
+    
 ) -> List[Dbroom]:
-    query = db.query(Dbroom).filter(Dbroom.is_active != IsActive.deleted)  # ✅ exclude deleted
+    # Start query by filtering out deleted rooms
+    query = db.query(Dbroom).filter(Dbroom.is_active != IsActive.deleted)
 
+    # Filter by hotel_id if provided
+    if hotel_id is not None:
+        query = query.filter(Dbroom.hotel_id == hotel_id)
+
+    # Search term filter (room number or description)
     if search_term:
-        pattern = f"%{search_term}%"
+        pattern = f"%{search_term.strip()}%"
         query = query.filter(
             or_(
                 Dbroom.room_number.ilike(pattern),
@@ -110,6 +118,7 @@ def advanced_room_search(
             )
         )
 
+    # Boolean filters
     if wifi is not None:
         query = query.filter(Dbroom.wifi == wifi)
     if air_conditioner is not None:
@@ -117,11 +126,13 @@ def advanced_room_search(
     if tv is not None:
         query = query.filter(Dbroom.tv == tv)
 
+    # Price range filters
     if min_price is not None:
         query = query.filter(Dbroom.price_per_night >= min_price)
     if max_price is not None:
         query = query.filter(Dbroom.price_per_night <= max_price)
 
+    # Date availability filter (exclude rooms already booked)
     if check_in_date and check_out_date:
         overlapping_room_ids = [
             booking.room_id
@@ -133,7 +144,6 @@ def advanced_room_search(
             )
             .all()
         ]
-
         if overlapping_room_ids:
             query = query.filter(~Dbroom.id.in_(overlapping_room_ids))
 

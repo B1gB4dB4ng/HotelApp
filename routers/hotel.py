@@ -13,7 +13,7 @@ from db.models import IsActive
 router = APIRouter(prefix="/hotel", tags=["Hotel"])
 
 
-@router.post("/submit", response_model=HotelDisplay, status_code=201)
+@router.post("/", response_model=HotelDisplay, status_code=201)
 def submit_hotel(
     request: HotelBase,
     db: Session = Depends(get_db),

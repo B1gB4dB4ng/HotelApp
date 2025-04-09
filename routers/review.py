@@ -17,6 +17,7 @@ from auth.oauth2 import get_current_user
 from db.db_review import update_avg_review_score
 from sqlalchemy import func
 from datetime import date
+from db.db_review import update_avg_review_score
 
 
 router = APIRouter(prefix="/review", tags=["Review"])
@@ -281,47 +282,38 @@ def edit_review(
 
 
 # -------------------------------------------------------------------------------------------------
-# delete review (soft delete)
-@router.delete("/delete/{user_id}/{review_id}")
+# delete review (soft delete)-only admin
+@router.delete(
+    "/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Review successfully soft-deleted"},
+        status.HTTP_403_FORBIDDEN: {"description": "Admin privileges required"},
+        status.HTTP_404_NOT_FOUND: {"description": "Review not found"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Review already deleted"},
+    },
+)
 def delete_review(
-    user_id: int,
     review_id: int,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
+    # Check if user is admin
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Only admins can delete reviews.")
 
-    # Fetch the review
+    # Check review exists
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")
 
-    print("Status:", review.status, type(review.status))
-    db.refresh(review)
-    # Check if already deleted BEFORE doing anything
-    if review.status == IsReviewStatus.deleted:
+    # Already deleted
+    if review.status.value == IsReviewStatus.deleted.value:
         raise HTTPException(status_code=400, detail="Review is already deleted.")
 
-    # Soft delete (update status)
+    # Soft delete
     review.status = IsReviewStatus.deleted
     db.commit()
 
-    # Recalculate average review score after deletion
-    total_rating, count = (
-        db.query(func.sum(Dbreview.rating), func.count(Dbreview.rating))
-        .filter(
-            Dbreview.hotel_id == review.hotel_id,
-            Dbreview.status == IsReviewStatus.confirmed.value,
-        )
-        .first()
-    )
-
-    hotel = db.query(Dbhotel).filter(Dbhotel.id == review.hotel_id).first()
-    if hotel:
-        hotel.avg_review_score = round(total_rating / count, 2) if count else 0.0
-        db.commit()
-
-    return {
-        "detail": f"Review with ID {review_id} soft deleted by Admin User {user_id}."
-    }
+    # Recalculate average score using with function
+    update_avg_review_score(db=db, hotel_id=review.hotel_id)

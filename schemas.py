@@ -133,6 +133,16 @@ class UpdateHotelResponse(BaseModel):
     message: str
     hotel: HotelDisplay
 
+class HotelUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    is_active: Optional[Literal["inactive", "active", "deleted"]] = "active"
+    description: Optional[str] = None
+    img_link: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    is_approved: Optional[bool] = None
+
 # Room
 
 class RoomBase(BaseModel):
@@ -316,7 +326,7 @@ class PaymentBase(BaseModel):
 # Schema for creating a payment
 class PaymentCreate(PaymentBase):
     amount: Decimal
-    status: PaymentStatus = PaymentStatus.pending  
+      
 
 
 # Schema for showing a payment

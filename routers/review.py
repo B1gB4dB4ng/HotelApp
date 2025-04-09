@@ -220,26 +220,19 @@ def filter_reviews(
 @router.put("/{review_id}", response_model=ReviewShow)
 def edit_review(
     review_id: int,
-    review_owner_id: int = Query(
-        ..., gt=0, description="User ID must be a positive integer"
-    ),
     updated_review: ReviewUpdate = Body(...),
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    # Check if user exists
-    if not db_review.user_exists(db, review_owner_id):
-        raise HTTPException(
-            status_code=404, detail=f"User with ID {review_owner_id} does not exist."
-        )
-
+    
+    
     # Check if review exists
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")
 
     # Only admin or owner can edit
-    if not current_user.is_superuser and current_user.id != review_owner_id:
+    if not current_user.is_superuser and current_user.id != review.user_id:
         raise HTTPException(
             status_code=403, detail="You are not allowed to edit this review."
         )

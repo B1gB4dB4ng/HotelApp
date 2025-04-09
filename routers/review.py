@@ -283,13 +283,21 @@ def edit_review(
 
 # -------------------------------------------------------------------------------------------------
 # delete review (soft delete)-only admin
-@router.delete("/{review_id}")
+@router.delete(
+    "/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Review successfully soft-deleted"},
+        status.HTTP_403_FORBIDDEN: {"description": "Admin privileges required"},
+        status.HTTP_404_NOT_FOUND: {"description": "Review not found"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Review already deleted"},
+    },
+)
 def delete_review(
     review_id: int,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    
     # Check if user is admin
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Only admins can delete reviews.")
@@ -309,8 +317,3 @@ def delete_review(
 
     # Recalculate average score using with function
     update_avg_review_score(db=db, hotel_id=review.hotel_id)
-
-    return {
-        "detail": f"Review with ID {review_id} soft deleted by Admin."
-    }
-

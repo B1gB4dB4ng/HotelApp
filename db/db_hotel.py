@@ -91,7 +91,7 @@ def get_hotel(db: Session, id: int):
     return db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
 
-def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: BackgroundTasks):
+def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: BackgroundTasks, current_user: Dbuser):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
     if not hotel:
@@ -110,7 +110,7 @@ def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: B
 
 
 # Check for changing approval status
-    if "is_approved" in update_data and previous_is_approved != hotel.is_approved:
+    if current_user.is_superuser and "is_approved" in update_data and previous_is_approved != hotel.is_approved:
         owner = db.query(Dbuser).filter(Dbuser.id == hotel.owner_id).first()
 
         if hotel.is_approved:

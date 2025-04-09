@@ -93,12 +93,12 @@ def update_hotel(
             status_code=403, detail="Not authorized to update this hotel"
         )
 
-    if not user.is_superuser and request.is_approved != hotel.is_approved:
+    if not user.is_superuser and request.is_approved is not None:
         raise HTTPException(
             status_code=403, detail="Only an admin can update is_approved"
         )
 
-    updated_hotel = db_hotel.update_hotel(db, id, request, background_tasks)
+    updated_hotel = db_hotel.update_hotel(db, id, request, background_tasks, user)
 
     if not updated_hotel:
         raise HTTPException(status_code=500, detail="Failed to update hotel")

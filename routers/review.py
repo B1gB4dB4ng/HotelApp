@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus,ReviewCreate,IsReviewStatusSearch
+from schemas import (
+    ReviewBase,
+    ReviewShow,
+    ReviewUpdate,
+    IsReviewStatus,
+    ReviewCreate,
+    IsReviewStatusSearch,
+)
 from db import db_review
 from typing import List, Optional
 from datetime import date
@@ -16,9 +23,8 @@ router = APIRouter(prefix="/review", tags=["Review"])
 # -------------------------------------------------------------------------------------------------
 # submiting a review
 
-@router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow
-)
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
 def submit_review(
     request: ReviewCreate,
     db: Session = Depends(get_db),
@@ -73,8 +79,10 @@ def submit_review(
     # All validations passed → create the review
     return db_review.create_review(db=db, request=request)
 
+
 # -------------------------------------------------------------------------------------------------
 # Get the review with review_id
+
 
 @router.get(
     "/{review_id}",
@@ -90,8 +98,11 @@ def get_review_with_review_id(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found. ")
     return review
+
+
 # -------------------------------------------------------------------------------------------------
 # getting all reviews and ratings for specific filters(all users)
+
 
 def validate_rating(value: Optional[float], name: str):
     if value is not None:
@@ -204,10 +215,13 @@ def filter_reviews(
 # -------------------------------------------------------------------------------------------------
 # edit a review
 
+
 @router.put("/{review_id}", response_model=ReviewShow)
 def edit_review(
     review_id: int,
-    review_owner_id: int = Query(..., gt=0, description="User ID must be a positive integer"),
+    review_owner_id: int = Query(
+        ..., gt=0, description="User ID must be a positive integer"
+    ),
     updated_review: ReviewUpdate = Body(...),
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
@@ -234,7 +248,10 @@ def edit_review(
         raise HTTPException(status_code=400, detail="Deleted reviews cannot be edited.")
 
     # Normal users can only edit pending reviews
-    if not current_user.is_superuser and review.status.value != IsReviewStatus.pending.value:
+    if (
+        not current_user.is_superuser
+        and review.status.value != IsReviewStatus.pending.value
+    ):
         raise HTTPException(
             status_code=400,
             detail="You can only edit reviews that are pending. Contact support for other changes.",
@@ -245,7 +262,9 @@ def edit_review(
         review_id=review_id,
         new_rating=updated_review.rating,
         new_comment=updated_review.comment,
-        new_status=updated_review.status.value if current_user.is_superuser and updated_review.status else None,
+        new_status=updated_review.status.value
+        if current_user.is_superuser and updated_review.status
+        else None,
     )
 
     # Reset status if edited by non-admin
@@ -253,11 +272,11 @@ def edit_review(
         updated_review.status = IsReviewStatus.pending
         db.commit()
 
-      # If admin confirmed the review, update the hotel's average score
-    if current_user.is_superuser and updated_review.status.value == IsReviewStatus.confirmed.value:
+    # If admin confirmed the review, update the hotel's average score
+    if current_user.is_superuser:
         hotel_id = db.query(Dbreview.hotel_id).filter(Dbreview.id == review_id).scalar()
         update_avg_review_score(db=db, hotel_id=hotel_id)
-    
+
     return updated_review
 
 

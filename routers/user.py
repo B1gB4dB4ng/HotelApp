@@ -8,7 +8,9 @@ from db import db_user
 from db.models import Dbuser
 import re
 from db.models import IsActive
-from typing import List
+from typing import List, Optional
+from sqlalchemy import or_
+from fastapi import Query
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -152,13 +154,38 @@ async def update_user(
 # Admin sees users' list
 @router.get("/all", response_model=List[UserDisplay], summary="Admin gets list of all users")
 def get_all_users(
+    search_term: Optional[str] = None,
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+    phone_number: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not authorized")
-    return db.query(Dbuser).filter(Dbuser.status != IsActive.deleted).all()
 
+    query = db.query(Dbuser).filter(Dbuser.status != IsActive.deleted)
+
+    # 🔍 Fuzzy match on any field
+    if search_term:
+        search = f"%{search_term.strip()}%"
+        query = query.filter(
+            or_(
+                Dbuser.username.ilike(search),
+                Dbuser.email.ilike(search),
+                Dbuser.phone_number.ilike(search),
+            )
+        )
+
+    # 🔎 Specific filters
+    if username:
+        query = query.filter(Dbuser.username.ilike(f"%{username.strip()}%"))
+    if email:
+        query = query.filter(Dbuser.email.ilike(f"%{email.strip()}%"))
+    if phone_number:
+        query = query.filter(Dbuser.phone_number.ilike(f"%{phone_number.strip()}%"))
+
+    return query.all()
 
 
 # Admin sees user's info

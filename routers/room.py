@@ -74,8 +74,9 @@ def update_room(
 
 
 # Advanced room search with filters and availability
-@router.get("/search", response_model=List[RoomDisplay])
+@router.get("/", response_model=List[RoomDisplay], summary="Advanced room search")
 def search_rooms(
+    hotel_id: Optional[int] = None,
     search_term: Optional[str] = None,
     wifi: Optional[bool] = None,
     air_conditioner: Optional[bool] = None,
@@ -96,19 +97,21 @@ def search_rooms(
         max_price=max_price,
         check_in_date=check_in_date,
         check_out_date=check_out_date,
+        hotel_id=hotel_id
     )
 
 
-#  Get all rooms for a hotel
-@router.get("/{hotel_id}", response_model=List[RoomDisplay])
-def list_rooms(
-    hotel_id: int,
+
+#  Get a room by an id
+@router.get("/{room_id}", response_model=RoomDisplay, summary="Get room by room ID")
+def get_room_by_id(
+    room_id: int,
     db: Session = Depends(get_db),
 ):
-    rooms = db_room.get_rooms_by_hotel(db, hotel_id, status="available")
-    if not rooms:
-        raise HTTPException(status_code=404, detail="No available rooms found")
-    return rooms
+    room = db_room.get_room(db, room_id)
+    if not room or room.is_active == IsActive.deleted:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return room
 
 #......
 # Soft-delete a room

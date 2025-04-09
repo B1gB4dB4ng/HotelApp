@@ -74,7 +74,7 @@ def update_room(
 
 
 # Advanced room search with filters and availability
-@router.get("/", response_model=List[RoomDisplay], summary="Advanced room search")
+@router.get("/", response_model=List[RoomDisplay], summary="Room search")
 def search_rooms(
     hotel_id: Optional[int] = None,
     search_term: Optional[str] = None,
@@ -103,7 +103,7 @@ def search_rooms(
 
 
 #  Get a room by an id
-@router.get("/{room_id}", response_model=RoomDisplay, summary="Get room by room ID")
+@router.get("/{room_id}", response_model=RoomDisplay, summary="Get a room by room ID")
 def get_room_by_id(
     room_id: int,
     db: Session = Depends(get_db),
@@ -115,7 +115,7 @@ def get_room_by_id(
 
 #......
 # Soft-delete a room
-@router.delete("/{room_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Soft delete room")
+@router.delete("/{room_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a room")
 def delete_room(
     room_id: int,
     db: Session = Depends(get_db),

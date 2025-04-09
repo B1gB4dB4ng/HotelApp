@@ -11,6 +11,7 @@ from db.models import IsActive
 from typing import List, Optional
 from sqlalchemy import or_
 from fastapi import Query
+from fastapi import Response
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -152,7 +153,7 @@ async def update_user(
     return response
 
 # Admin sees users' list
-@router.get("/all", response_model=List[UserDisplay], summary="Admin gets list of all users")
+@router.get("/", response_model=List[UserDisplay], summary="Admin search users")
 def get_all_users(
     search_term: Optional[str] = None,
     username: Optional[str] = None,
@@ -208,7 +209,7 @@ def get_user_info(
 
 
 #Admin deletes user
-@router.delete("/{user_id}", summary="Admin deletes a user")
+@router.delete("/{user_id}", status_code=204, summary="Admin deletes a user")
 def delete_user_by_id(
     user_id: int,
     db: Session = Depends(get_db),
@@ -223,5 +224,6 @@ def delete_user_by_id(
 
     user.status = IsActive.deleted
     db.commit()
-    return {"detail": f"User with ID {user_id} has been deleted successfully"}
+
+    return Response(status_code=204)
 

@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
-from db.models import Dbhotel, IsActive
-from schemas import HotelBase
+from db.models import Dbhotel, IsActive, Dbuser
+from schemas import HotelBase, HotelUpdate
 from sqlalchemy import or_
 from typing import Optional
+from fastapi import BackgroundTasks
+from email_utils import send_email
 
 
 def create_hotel(db: Session, request: HotelBase, owner_id: int):
@@ -89,21 +91,38 @@ def get_hotel(db: Session, id: int):
     return db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
 
-def update_hotel(db: Session, id: int, request: HotelBase):
+def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: BackgroundTasks):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
     if not hotel:
         return None
+    
+    #Take the status before changing
+    previous_is_approved = hotel.is_approved
 
-    hotel.name = request.name
-    hotel.description = request.description
-    hotel.img_link = request.img_link
-    hotel.is_active = request.is_active
-    hotel.is_approved = request.is_approved
-    hotel.location = request.location
-    hotel.phone_number = request.phone_number
-    hotel.email = request.email
+    update_data = request.dict(exclude_unset=True)
+
+    for key, value in update_data.items():
+        setattr(hotel, key, value)
 
     db.commit()
     db.refresh(hotel)
+
+
+# Check for changing approval status
+    if "is_approved" in update_data and previous_is_approved != hotel.is_approved:
+        owner = db.query(Dbuser).filter(Dbuser.id == hotel.owner_id).first()
+
+        if hotel.is_approved:
+            # Approval email
+            subject = "Your Hotel Has Been Approved"
+            body = f"Congratulations {owner.username},\n\nYour hotel '{hotel.name}' has been approved.\n\nBest regards,\nHotel Management Team."
+        else:
+            # Rejection email
+            subject = "Your Hotel Has Been Rejected"
+            body = f"Dear {owner.username},\n\nYour hotel '{hotel.name}' has been rejected. Please contact support for further information.\n\nBest regards,\nHotel Management Team."
+
+        to_email = owner.email
+        background_tasks.add_task(send_email, to_email, subject, body)
+
     return hotel

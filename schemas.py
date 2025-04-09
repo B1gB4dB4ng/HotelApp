@@ -1,12 +1,16 @@
 from decimal import Decimal
 from datetime import date, timedelta, datetime
 import re
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, List
+from db.models import IsActive
+
 from pydantic import (
     BaseModel,
     condecimal,
     EmailStr,
     StringConstraints,
+    Field,
+    field_validator,
     field_serializer,
     field_validator,
     condecimal,
@@ -28,6 +32,22 @@ class IsActive(Enum):
     active = "active"
     deleted = "deleted"
 
+from datetime import date, datetime
+from calendar import monthrange
+
+
+class IsActive(Enum):
+    inactive = "inactive"
+    active = "active"
+    deleted = "deleted"
+
+
+class IsActive(Enum):
+    inactive = "inactive"
+    active = "active"
+    deleted = "deleted"
+
+
 
 class UserBase(BaseModel):
     username: Annotated[str, StringConstraints(min_length=3, max_length=50)]
@@ -37,7 +57,7 @@ class UserBase(BaseModel):
 
     @field_validator("phone_number")
     def validate_phone(cls, v):
-        if not re.match(r"^\+?[0-9\s\-]+$", v):  # Basic phone format check
+        if not re.match(r"^\+?[0-9\s\-]+$", v):
             raise ValueError("Invalid phone number format")
         return v
 
@@ -56,20 +76,17 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
     phone_number: Optional[str] = None
-    is_superuser: Optional[bool] = None  # Remove default=False
+    is_superuser: Optional[bool] = None
+    status: Optional[IsActive] = None
     current_password: Optional[str] = None
 
     @field_validator("current_password")
     def validate_current_password_when_needed(cls, v, info):
-        """Validate current_password only when sensitive fields are being changed"""
         data = info.data
         sensitive_fields = ["username", "email", "password"]
-
         if any(field in data and data[field] is not None for field in sensitive_fields):
             if not v:
-                raise ValueError(
-                    "Current password required for security-sensitive changes"
-                )
+                raise ValueError("Current password required for security-sensitive changes")
         return v
 
 
@@ -84,6 +101,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
+# Hotel
 
 class HotelBase(BaseModel):
     name: str
@@ -91,8 +109,8 @@ class HotelBase(BaseModel):
     is_active: Literal["inactive", "active", "deleted"] = "active"
     description: Optional[str]
     img_link: Optional[str]
-    phone_number: Optional[str]  # Added phone_number
-    email: Optional[str]  # Added email
+    phone_number: Optional[str]
+    email: Optional[str]
     is_approved: bool = False
 
 
@@ -103,9 +121,9 @@ class HotelDisplay(BaseModel):
     description: Optional[str]
     img_link: Optional[str]
     is_approved: bool
-    avg_review_score: Optional[Decimal]  # Added avg_review_score
-    phone_number: Optional[str]  # Added phone_number
-    email: Optional[str]  # Added email
+    avg_review_score: Optional[Decimal]
+    phone_number: Optional[str]
+    email: Optional[str]
 
     class Config:
         from_attributes = True
@@ -115,17 +133,26 @@ class UpdateHotelResponse(BaseModel):
     message: str
     hotel: HotelDisplay
 
+# Room
 
 class RoomBase(BaseModel):
     room_number: str
-    description: Optional[str]
+    description: Optional[str] = None
     price_per_night: Decimal
-    is_active: Literal["inactive", "active", "deleted"] = "active"
     wifi: bool = False
     air_conditioner: bool = False
     tv: bool = False
     status: Literal["available", "booked"] = "available"
     bed_count: int
+
+
+class RoomCreate(RoomBase):
+    hotel_id: int
+    is_active: Literal["inactive", "active", "deleted"] = Field(
+        default="active",
+        description="Room status: 'active', 'inactive', or 'deleted'",
+        example="active"
+    )
 
 
 class RoomDisplay(BaseModel):
@@ -144,14 +171,32 @@ class RoomDisplay(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_serializer("is_active", "status")  # ✅ Convert Enum to string
-    def serialize_enum(value: Enum) -> str:
-        return value.value if isinstance(value, Enum) else value
 
+class RoomUpdate(BaseModel):
+    description: Optional[str] = None
+    price_per_night: Optional[Decimal] = None
+    wifi: Optional[bool] = None
+    air_conditioner: Optional[bool] = None
+    tv: Optional[bool] = None
+    status: Optional[Literal["available", "booked", "unavailable"]] = None
+    bed_count: Optional[int] = None
+    is_active: Optional[Literal["inactive", "active", "deleted"]] = "active"
+
+
+class RoomSearch(BaseModel):
+    search_term: Optional[str] = None
+    amenities: Optional[List[str]] = Field(None, example=["wifi", "air_conditioner"])
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    check_in: date
+    check_out: date
+    location: Optional[str] = None
+
+# Booking
 
 class BookingBase(BaseModel):
-    hotel_id: int  # The hotel this booking is associated with
-    room_id: int  # Room booked by the guest
+    hotel_id: int
+    room_id: int
     check_in_date: date = date.today()
     check_out_date: date = date.today() + timedelta(days=1)
 
@@ -285,6 +330,7 @@ class PaymentShow(BaseModel):
     class Config:
         from_attributes = True
 
+# Review
 
 # -----------------------------------------------------------
 # -----------------------------------------------------------

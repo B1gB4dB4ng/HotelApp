@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus,ReviewCreate
+from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus,ReviewCreate,IsReviewStatusSearch
 from db import db_review
 from typing import List, Optional
 from datetime import date
@@ -75,7 +75,6 @@ def submit_review(
 # -------------------------------------------------------------------------------------------------
 # Get the review with review_id
 
-
 @router.get(
     "/{review_id}",
     response_model=ReviewShow,
@@ -90,11 +89,8 @@ def get_review_with_review_id(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found. ")
     return review
-
-
 # -------------------------------------------------------------------------------------------------
 # getting all reviews and ratings for specific filters(all users)
-
 
 def validate_rating(value: Optional[float], name: str):
     if value is not None:
@@ -130,9 +126,9 @@ def filter_reviews(
         None,
         description="Maximum rating (from 1.0 to 5.0, with at most one decimal place like 3.5, 4.0, etc.)",
     ),
-    status: Optional[IsReviewStatus] = Query(
+    status: Optional[IsReviewStatusSearch] = Query(
         default=None,
-        description="Optional filter by review status (pending, confirmed, rejected, deleted)",
+        description="Optional filter by review status (pending, confirmed, rejected)",
     ),
     start_date: Optional[date] = Query(
         None, description="Start date for filtering reviews"

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import db_hotel
 from db.models import Dbuser
-from schemas import HotelBase, HotelDisplay, UpdateHotelResponse
+from schemas import HotelBase, HotelDisplay, UpdateHotelResponse, HotelUpdate
 from typing import Optional, List
 from auth.oauth2 import get_current_user
 from fastapi import Response
@@ -71,7 +71,7 @@ def get_hotels(
 
 
 # update hotels
-@router.put(
+@router.patch(
     "/{id}",
     response_model=UpdateHotelResponse,
     summary="Update hotel",
@@ -79,7 +79,8 @@ def get_hotels(
 )
 def update_hotel(
     id: int,
-    request: HotelBase,
+    request: HotelUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: Dbuser = Depends(get_current_user),
 ):
@@ -97,7 +98,7 @@ def update_hotel(
             status_code=403, detail="Only an admin can update is_approved"
         )
 
-    updated_hotel = db_hotel.update_hotel(db, id, request)
+    updated_hotel = db_hotel.update_hotel(db, id, request, background_tasks)
 
     if not updated_hotel:
         raise HTTPException(status_code=500, detail="Failed to update hotel")

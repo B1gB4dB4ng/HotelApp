@@ -125,27 +125,22 @@ def update_review_by_id(
     review_id: int,
     new_rating: Optional[float],
     new_comment: Optional[str],
-    new_status: Optional[str] = None  # ✅ New
+    new_status: Optional[str] = None
 ) -> Optional[Dbreview]:
-    review_query = db.query(Dbreview).filter(Dbreview.id == review_id)
-    review = review_query.first()
-    
+    review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:
         return None
-
-    update_data = {}
     if new_rating is not None:
-        update_data["rating"] = new_rating
+        review.rating = new_rating
     if new_comment is not None:
-        update_data["comment"] = new_comment
-    if new_status is not None:  # ✅ Add status update
-        update_data["status"] = new_status
+        review.comment = new_comment
+    if new_status is not None:
+        review.status = new_status
 
-    review_query.update(update_data)
     db.commit()
-    return review_query.first()
-
-
+    db.refresh(review)
+    return review
+ 
 #------------------------------------------------------------------------------------------
 #delet a review
 def soft_delete_review_by_id(db: Session, review_id: int):

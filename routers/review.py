@@ -2,11 +2,19 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
-from schemas import ReviewBase, ReviewShow, ReviewUpdate, IsReviewStatus,ReviewCreate,IsReviewStatusSearch
+from schemas import (
+    ReviewBase,
+    ReviewShow,
+    ReviewUpdate,
+    IsReviewStatus,
+    ReviewCreate,
+    IsReviewStatusSearch,
+)
 from db import db_review
 from typing import List, Optional
 from datetime import date
 from auth.oauth2 import get_current_user
+from db.db_review import update_avg_review_score
 from sqlalchemy import func
 from datetime import date
 
@@ -15,9 +23,8 @@ router = APIRouter(prefix="/review", tags=["Review"])
 # -------------------------------------------------------------------------------------------------
 # submiting a review
 
-@router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow
-)
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
 def submit_review(
     request: ReviewCreate,
     db: Session = Depends(get_db),
@@ -72,8 +79,10 @@ def submit_review(
     # All validations passed → create the review
     return db_review.create_review(db=db, request=request)
 
+
 # -------------------------------------------------------------------------------------------------
 # Get the review with review_id
+
 
 @router.get(
     "/{review_id}",
@@ -89,8 +98,11 @@ def get_review_with_review_id(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found. ")
     return review
+
+
 # -------------------------------------------------------------------------------------------------
 # getting all reviews and ratings for specific filters(all users)
+
 
 def validate_rating(value: Optional[float], name: str):
     if value is not None:
@@ -204,42 +216,36 @@ def filter_reviews(
 # edit a review
 
 
-@router.put("/edit", response_model=ReviewShow)
+@router.put("/{review_id}", response_model=ReviewShow)
 def edit_review(
-    user_id: int = Query(..., gt=0, description="User ID must be a positive integer"),
-    review_id: int = Query(
-        ..., gt=0, description="Review ID must be a positive integer"
+    review_id: int,
+    review_owner_id: int = Query(
+        ..., gt=0, description="User ID must be a positive integer"
     ),
-    request: ReviewUpdate = Body(...),
+    updated_review: ReviewUpdate = Body(...),
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
+    # Check if user exists
+    if not db_review.user_exists(db, review_owner_id):
+        raise HTTPException(
+            status_code=404, detail=f"User with ID {review_owner_id} does not exist."
+        )
+
     # Check if review exists
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")
 
-    # Don't allow editing deleted reviews
-    if review.status == IsReviewStatus.deleted:
-        raise HTTPException(status_code=400, detail="Deleted reviews cannot be edited.")
-
-    # Check if review belongs to provided user or user is super admin
-    if not current_user.is_superuser and review.user_id != user_id:
-        raise HTTPException(
-            status_code=400, detail="Review does not belong to the given user."
-        )
-
-    # Check if user exists
-    if not db_review.user_exists(db, user_id):
-        raise HTTPException(
-            status_code=404, detail=f"User with ID {user_id} does not exist."
-        )
-
     # Only admin or owner can edit
-    if not current_user.is_superuser and current_user.id != user_id:
+    if not current_user.is_superuser and current_user.id != review_owner_id:
         raise HTTPException(
             status_code=403, detail="You are not allowed to edit this review."
         )
+
+    # Check if deleted
+    if review.status == IsReviewStatus.deleted:
+        raise HTTPException(status_code=400, detail="Deleted reviews cannot be edited.")
 
     # Normal users can only edit pending reviews
     if (
@@ -251,40 +257,27 @@ def edit_review(
             detail="You can only edit reviews that are pending. Contact support for other changes.",
         )
 
-    # Perform the update
     updated_review = db_review.update_review_by_id(
         db=db,
         review_id=review_id,
-        new_rating=request.rating,
-        new_comment=request.comment,
-        new_status=request.status.value
-        if current_user.is_superuser and request.status
-        else None,  # ✅ Add this
+        new_rating=updated_review.rating,
+        new_comment=updated_review.comment,
+        new_status=updated_review.status.value
+        if current_user.is_superuser and updated_review.status
+        else None,
     )
 
-    # 🔄 Reset status to pending if a normal user edits it
+    # Reset status if edited by non-admin
     if not current_user.is_superuser:
-        review.status = IsReviewStatus.pending
+        updated_review.status = IsReviewStatus.pending
+        db.commit()
 
-    db.commit()
+    # If admin confirmed the review, update the hotel's average score
+    if current_user.is_superuser:
+        hotel_id = db.query(Dbreview.hotel_id).filter(Dbreview.id == review_id).scalar()
+        update_avg_review_score(db=db, hotel_id=hotel_id)
 
-    # ⭐ If the review is confirmed → update average review score
-    if review.status.value == IsReviewStatus.confirmed.value:
-        total_rating, count = (
-            db.query(func.sum(Dbreview.rating), func.count(Dbreview.rating))
-            .filter(
-                Dbreview.hotel_id == review.hotel_id,
-                Dbreview.status == IsReviewStatus.confirmed.value,
-            )
-            .first()
-        )
-
-        hotel = db.query(Dbhotel).filter(Dbhotel.id == review.hotel_id).first()
-        if hotel:
-            hotel.avg_review_score = round(total_rating / count, 2) if count else 0.0
-            db.commit()
-
-    return review
+    return updated_review
 
 
 # -------------------------------------------------------------------------------------------------

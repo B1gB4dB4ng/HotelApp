@@ -257,7 +257,7 @@ class BookingUpdate(BookingBase):
 
 
 
-
+#---------------------------------------------------------------------------
 class PaymentStatus(str, Enum):
     pending = "pending"
     completed = "completed"
@@ -266,12 +266,12 @@ class PaymentStatus(str, Enum):
 
 
 class PaymentBase(BaseModel):
+    user_id: int
     booking_id: int
     payment_date: date
-
     card_number: str = Field(..., min_length=16, max_length=16)
-    expiry_month: int = Field(..., ge=1, le=12)
-    expiry_year: int = Field(..., ge=2024)
+    expiry_month: int = Field(..., ge=3, le=12)
+    expiry_year: int = Field(..., ge=2025)
     cvv: str = Field(..., min_length=3, max_length=4)
 
     @field_validator("card_number")
@@ -280,10 +280,10 @@ class PaymentBase(BaseModel):
         v = v.replace(" ", "")  # Clean up spaces
         if not v.isdigit():
             raise ValueError("Card number must contain digits only.")
-        if int(v[-1]) % 2 != 0:
-            raise ValueError(
-                "Fake check failed: card is invalid because it ends in an odd digit."
-            )
+        # if int(v[-1]) % 2 != 0:
+        #     raise ValueError(
+        #         "Fake check failed: card is invalid because it ends in an odd digit."
+        #     )
         if not cls.luhn_check(v):
             raise ValueError("Card number is invalid (Luhn check failed).")
         return v
@@ -323,18 +323,19 @@ class PaymentBase(BaseModel):
         return total % 10 == 0
 
 
-# ✅ Schema for creating a payment
+# Schema for creating a payment
 class PaymentCreate(PaymentBase):
     amount: Decimal
-    status: PaymentStatus = PaymentStatus.pending  # ✅ Now uses Enum with default
+      
 
 
-# ✅ Schema for showing a payment
+# Schema for showing a payment
 class PaymentShow(BaseModel):
     id: int
+    user_id:int
     booking_id: int
     amount: Decimal
-    status: PaymentStatus  # ✅ Now uses Enum
+    status: PaymentStatus  
     payment_date: date
 
     class Config:
@@ -349,7 +350,11 @@ class IsReviewStatus(str, Enum):
     confirmed = "confirmed"
     rejected = "rejected"
     deleted = "deleted"
-
+class IsReviewStatusSearch(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+    
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
@@ -368,7 +373,8 @@ class ReviewShow(ReviewBase):
     user_id: int
     created_at: date
     status: IsReviewStatus
-
+    rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
+    comment: Optional[str]
     class Config:
         from_attributes = True
 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from db.models import Dbreview 
 from schemas import ReviewBase, IsReviewStatus,ReviewUpdate,ReviewCreate
 from sqlalchemy import func
-from db.models import Dbreview, Dbhotel, Dbuser
+from db.models import Dbreview, Dbhotel, Dbuser, Dbbooking
 from typing import Optional, List
 from datetime import date
 
@@ -43,14 +43,11 @@ def update_avg_review_score(db: Session, hotel_id: int):
         db.commit()
         
 #------------------------------------------------------------------------------------------
-# def get_all_reviews_by_user(db: Session, user_id: int):
-#     return db.query(Dbreview).filter(Dbreview.user_id == user_id).all()
-#------------------------------------------------------------------------------------------
-#get review by id
+#get review by review_id
 def get_review_by_review_id(db: Session, review_id: int):
-    return db.query(Dbreview).filter(Dbreview.id== review_id).first()
+    return db.query(Dbreview).filter(Dbreview.id== review_id).filter(Dbreview.status != "deleted").first()
 #------------------------------------------------------------------------------------------
-# get reviewa by filtering
+# get review by filtering
 def get_filtered_reviews(
     db: Session,
     user_id: Optional[int] = None,
@@ -63,8 +60,8 @@ def get_filtered_reviews(
     end_date: Optional[date] = None,
     search: Optional[str] = None,
 ) -> List[Dbreview]:
-    query = db.query(Dbreview)
-
+    query = db.query(Dbreview).filter(Dbreview.status != "deleted")
+#
     if user_id is not None:
         query = query.filter(Dbreview.user_id == user_id)
 
@@ -94,19 +91,16 @@ def get_filtered_reviews(
 
     return query.all()
 
-
 # Helper functions for existence checks
 def user_exists(db: Session, user_id: int) -> bool:
-    from db.models import Dbuser
     return db.query(Dbuser).filter(Dbuser.id == user_id).first() is not None
 
 def hotel_exists(db: Session, hotel_id: int) -> bool:
-    from db.models import Dbhotel
     return db.query(Dbhotel).filter(Dbhotel.id == hotel_id).first() is not None
 
 def booking_exists(db: Session, booking_id: int) -> bool:
-    from db.models import Dbbooking
     return db.query(Dbbooking).filter(Dbbooking.id == booking_id).first() is not None
+
 def review_exists_for_user_and_hotel(db: Session, user_id: int, hotel_id: int) -> bool:
     return db.query(Dbreview).filter(
         Dbreview.user_id == user_id,
@@ -131,27 +125,22 @@ def update_review_by_id(
     review_id: int,
     new_rating: Optional[float],
     new_comment: Optional[str],
-    new_status: Optional[str] = None  # ✅ New
+    new_status: Optional[str] = None
 ) -> Optional[Dbreview]:
-    review_query = db.query(Dbreview).filter(Dbreview.id == review_id)
-    review = review_query.first()
-    
+    review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:
         return None
-
-    update_data = {}
     if new_rating is not None:
-        update_data["rating"] = new_rating
+        review.rating = new_rating
     if new_comment is not None:
-        update_data["comment"] = new_comment
-    if new_status is not None:  # ✅ Add status update
-        update_data["status"] = new_status
+        review.comment = new_comment
+    if new_status is not None:
+        review.status = new_status
 
-    review_query.update(update_data)
     db.commit()
-    return review_query.first()
-
-
+    db.refresh(review)
+    return review
+ 
 #------------------------------------------------------------------------------------------
 #delet a review
 def soft_delete_review_by_id(db: Session, review_id: int):

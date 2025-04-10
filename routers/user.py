@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from auth.oauth2 import create_access_token, get_current_user
 from db.database import get_db
-from schemas import  UserBase, UpdateUserResponse, UserDisplay, UserUpdate
+from schemas import UserBase, UpdateUserResponse, UserDisplay, UserUpdate
 from db import db_user
 from db.models import Dbuser
 import re
@@ -142,7 +142,7 @@ async def update_user(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Token regen if sensitive data changed
+    # Token  if sensitive data changed
     response = {
         "message": "User updated successfully",
         "user": UserDisplay.from_orm(updated_user),

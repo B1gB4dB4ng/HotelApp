@@ -18,7 +18,6 @@ from db.db_review import update_avg_review_score
 
 router = APIRouter(prefix="/reviews", tags=["Review"])
 # -------------------------------------------------------------------------------------------------
-# submiting a review
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)

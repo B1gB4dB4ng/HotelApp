@@ -4,7 +4,7 @@ from db.database import get_db
 from schemas import PaymentCreate, PaymentShow, PaymentStatus
 from db import db_payment
 from auth.oauth2 import get_current_user
-from db.models import Dbuser, Dbbooking, Dbpayment
+from db.models import Dbuser, Dbbooking
 from decimal import Decimal
 from typing import List, Optional
 from datetime import date
@@ -119,7 +119,7 @@ def search_payments_superadmin_only(
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    # Authorization: Only superadmins can query for other users
+    # Authorization: Only superadmin can query for other users
     if (
         not current_user.is_superuser
         and user_id is not None

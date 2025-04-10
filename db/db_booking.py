@@ -113,11 +113,12 @@ def is_hotel_owner(db: Session, hotel_id: int, user_id: int) -> bool:
     ).scalar()
 
 
-def get_booking_by_id(db: Session, booking_id: int, include_deleted: bool = False):
-    query = db.query(Dbbooking).filter(Dbbooking.id == booking_id)
-
-    if not include_deleted:
-        query = query.filter(Dbbooking.is_active != IsActive.deleted)
+def get_booking_by_id(db: Session, booking_id: int):
+    query = (
+        db.query(Dbbooking)
+        .filter(Dbbooking.id == booking_id)
+        .filter(Dbbooking.is_active != IsActive.deleted)
+    )
 
     return query.first()
 
@@ -125,7 +126,7 @@ def get_booking_by_id(db: Session, booking_id: int, include_deleted: bool = Fals
 def soft_delete_booking(db: Session, booking_id: int):
     booking = db.query(Dbbooking).filter(Dbbooking.id == booking_id).first()
 
-    if not booking:
+    if not booking or booking.is_active == IsActive.deleted:
         return None  # Return None if no booking is found
 
     booking.is_active = (
@@ -152,7 +153,7 @@ def get_all_bookings(
     is_active: Optional[str] = None,
     status: Optional[str] = None,
 ):
-    query = db.query(Dbbooking)
+    query = db.query(Dbbooking).filter(Dbbooking.is_active != IsActive.deleted)
 
     if user_id is not None:
         query = query.filter(Dbbooking.user_id == user_id)
@@ -174,7 +175,11 @@ def update_booking_in_db(
     db: Session, booking_id: int, request: BookingUpdate
 ) -> Dbbooking:
     # Query the booking by ID
-    booking = db.query(Dbbooking).filter(Dbbooking.id == booking_id)
+    booking = (
+        db.query(Dbbooking)
+        .filter(Dbbooking.id == booking_id)
+        .filter(Dbbooking.is_active != IsActive.deleted)
+    )
 
     # Check if the booking exists
     if not booking.first():

@@ -11,7 +11,12 @@ from schemas import BookingCreate, BookingShow, BookingStatus, BookingUpdate, Is
 router = APIRouter(prefix="/booking", tags=["Booking"])
 
 
-@router.post("/", response_model=BookingShow)
+@router.post(
+    "/",
+    response_model=BookingShow,
+    status_code=STATUS.HTTP_201_CREATED,
+    summary="Create a new booking",
+)
 def create_a_booking(
     request: BookingCreate,
     db: Session = Depends(get_db),
@@ -65,7 +70,8 @@ def get_booking(
     user: Dbuser = Depends(get_current_user),  # Get the current logged-in user
 ):
     booking = db_booking.get_booking_by_id(
-        db, booking_id, include_deleted=user.is_superuser
+        db,
+        booking_id,
     )
 
     if not booking:
@@ -80,9 +86,9 @@ def get_booking(
         or booking.user_id == user.id
         or db_booking.is_hotel_owner(db, booking.hotel_id, user.id)
     ):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this booking"
-        )
+            raise HTTPException(
+                status_code=403, detail="Not authorized to view this booking"
+            )
 
     return booking
 

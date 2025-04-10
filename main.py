@@ -1,7 +1,8 @@
 from threading import Thread
 from fastapi import FastAPI
 from auth import authentication
-from routers import hotel, user, booking, review, room, payment
+from cloudinary_config import configure_cloudinary
+from routers import files, hotel, user, booking, review, room, payment
 from db import models
 from db.database import engine
 from task.background_tasks import update_room_status_periodically
@@ -15,8 +16,7 @@ app.include_router(room.router)
 app.include_router(booking.router)
 app.include_router(review.router)
 app.include_router(payment.router)
-
-
+app.include_router(files.router)
 
 
 @app.get("/")
@@ -26,6 +26,7 @@ def read_root():
 
 @app.on_event("startup")
 def start_periodic_task():
+    configure_cloudinary()
     thread = Thread(target=update_room_status_periodically)
     thread.daemon = (
         True  # Daemon threads automatically close when the main program exits

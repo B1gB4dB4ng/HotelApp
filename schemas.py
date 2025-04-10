@@ -32,6 +32,7 @@ class IsActive(Enum):
     active = "active"
     deleted = "deleted"
 
+
 from datetime import date, datetime
 from calendar import monthrange
 
@@ -46,7 +47,6 @@ class IsActive(Enum):
     inactive = "inactive"
     active = "active"
     deleted = "deleted"
-
 
 
 class UserBase(BaseModel):
@@ -86,7 +86,9 @@ class UserUpdate(BaseModel):
         sensitive_fields = ["username", "email", "password"]
         if any(field in data and data[field] is not None for field in sensitive_fields):
             if not v:
-                raise ValueError("Current password required for security-sensitive changes")
+                raise ValueError(
+                    "Current password required for security-sensitive changes"
+                )
         return v
 
 
@@ -101,7 +103,9 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
+
 # Hotel
+
 
 class HotelBase(BaseModel):
     name: str
@@ -133,6 +137,7 @@ class UpdateHotelResponse(BaseModel):
     message: str
     hotel: HotelDisplay
 
+
 class HotelUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
@@ -143,7 +148,9 @@ class HotelUpdate(BaseModel):
     email: Optional[str] = None
     is_approved: Optional[bool] = None
 
+
 # Room
+
 
 class RoomBase(BaseModel):
     room_number: str
@@ -161,7 +168,7 @@ class RoomCreate(RoomBase):
     is_active: Literal["inactive", "active", "deleted"] = Field(
         default="active",
         description="Room status: 'active', 'inactive', or 'deleted'",
-        example="active"
+        example="active",
     )
 
 
@@ -202,7 +209,9 @@ class RoomSearch(BaseModel):
     check_out: date
     location: Optional[str] = None
 
+
 # Booking
+
 
 class BookingBase(BaseModel):
     hotel_id: int
@@ -255,9 +264,7 @@ class BookingUpdate(BookingBase):
     cancel_reason: Optional[str] = None  # Optional reason, can be filled when canceling
 
 
-
-
-#---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 class PaymentStatus(str, Enum):
     pending = "pending"
     completed = "completed"
@@ -326,22 +333,23 @@ class PaymentBase(BaseModel):
 # Schema for creating a payment
 class PaymentCreate(PaymentBase):
     amount: Decimal
-      
 
 
 # Schema for showing a payment
 class PaymentShow(BaseModel):
     id: int
-    user_id:int
+    user_id: int
     booking_id: int
     amount: Decimal
-    status: PaymentStatus  
+    status: PaymentStatus
     payment_date: date
 
     class Config:
         from_attributes = True
 
+
 # Review
+
 
 # -----------------------------------------------------------
 # -----------------------------------------------------------
@@ -350,11 +358,14 @@ class IsReviewStatus(str, Enum):
     confirmed = "confirmed"
     rejected = "rejected"
     deleted = "deleted"
+
+
 class IsReviewStatusSearch(str, Enum):
     pending = "pending"
     confirmed = "confirmed"
     rejected = "rejected"
-    
+
+
 class ReviewBase(BaseModel):
     user_id: int
     hotel_id: int
@@ -362,12 +373,16 @@ class ReviewBase(BaseModel):
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
     status: IsReviewStatus
+
+
 class ReviewCreate(BaseModel):
     user_id: int
     hotel_id: int
     booking_id: int
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
+
+
 class ReviewShow(ReviewBase):
     id: int
     user_id: int
@@ -375,6 +390,7 @@ class ReviewShow(ReviewBase):
     status: IsReviewStatus
     rating: condecimal(max_digits=2, decimal_places=1, ge=1.0, le=5.0)
     comment: Optional[str]
+
     class Config:
         from_attributes = True
 
@@ -391,3 +407,14 @@ class HotelSearch(BaseModel):
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
     location: Optional[str] = None
+
+
+class FileUploadOut(BaseModel):
+    id: int
+    user_id: int
+    file_name: str
+    file_url: str
+    upload_date: datetime
+
+    class Config:
+        orm_mode = True

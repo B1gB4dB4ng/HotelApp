@@ -6,6 +6,8 @@ from decimal import Decimal
 from typing import Optional, List, Tuple
 from fastapi import HTTPException, status
 from datetime import date 
+from sqlalchemy.orm import joinedload
+from db.models import Dbuser
 
 # Create a Room
 def create_room(db: Session, request: RoomCreate) -> Dbroom:
@@ -34,7 +36,7 @@ def create_room(db: Session, request: RoomCreate) -> Dbroom:
             detail=f"Failed to create room: {str(e)}"
         )
 
-# Search by a Room Number and a Hotel it
+# Search by a Room Number and a Hotel id
 def get_room_by_number(db: Session, room_num: int, hotel_id: int):
     return db.query(Dbroom).filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id).first()
 
@@ -66,7 +68,18 @@ def update_room(db: Session, room_id: int, request: RoomUpdate):
 
 #############
 def get_room(db: Session, room_id: int):
-    return db.query(Dbroom).filter(Dbroom.id == room_id).first()
+    return (
+        db.query(Dbroom)
+        .join(Dbhotel)
+        .join(Dbuser)
+        .filter(
+            Dbroom.id == room_id,
+            Dbroom.is_active != IsActive.deleted,
+            Dbhotel.is_active != IsActive.deleted,
+            Dbuser.status != IsActive.deleted  # Exclude deleted hotel owners
+        )
+        .first()
+    )
 
 def get_rooms_by_hotel(
     db: Session,
@@ -90,7 +103,6 @@ def get_rooms_by_hotel(
 # Search a Room Using Different Filters
 def advanced_room_search(
     db: Session,
-    hotel_id: Optional[int] = None,
     search_term: Optional[str] = None,
     wifi: Optional[bool] = None,
     air_conditioner: Optional[bool] = None,
@@ -99,16 +111,23 @@ def advanced_room_search(
     max_price: Optional[Decimal] = None,
     check_in_date: Optional[date] = None,
     check_out_date: Optional[date] = None,
-    
+    hotel_id: Optional[int] = None,
 ) -> List[Dbroom]:
-    # Start query by filtering out deleted rooms
-    query = db.query(Dbroom).filter(Dbroom.is_active != IsActive.deleted)
+    # Initial query: filter out deleted rooms, hotels, and hotel owners
+    query = (
+        db.query(Dbroom)
+        .join(Dbhotel)
+        .join(Dbuser)
+        .filter(
+            Dbroom.is_active != IsActive.deleted,
+            Dbhotel.is_active != IsActive.deleted,
+            Dbuser.status != IsActive.deleted  # ⛔ Exclude deleted owners
+        )
+    )
 
-    # Filter by hotel_id if provided
     if hotel_id is not None:
         query = query.filter(Dbroom.hotel_id == hotel_id)
 
-    # Search term filter (room number or description)
     if search_term:
         pattern = f"%{search_term.strip()}%"
         query = query.filter(
@@ -118,7 +137,6 @@ def advanced_room_search(
             )
         )
 
-    # Boolean filters
     if wifi is not None:
         query = query.filter(Dbroom.wifi == wifi)
     if air_conditioner is not None:
@@ -126,13 +144,11 @@ def advanced_room_search(
     if tv is not None:
         query = query.filter(Dbroom.tv == tv)
 
-    # Price range filters
     if min_price is not None:
         query = query.filter(Dbroom.price_per_night >= min_price)
     if max_price is not None:
         query = query.filter(Dbroom.price_per_night <= max_price)
 
-    # Date availability filter (exclude rooms already booked)
     if check_in_date and check_out_date:
         overlapping_room_ids = [
             booking.room_id

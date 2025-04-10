@@ -1,9 +1,11 @@
+from typing import List, Optional
+from datetime import datetime
 import cloudinary.uploader
 from fastapi import HTTPException, status
 
 from sqlalchemy.orm import Session
 
-from db.models import UploadedFile
+from db.models import Dbuser, UploadedFile
 
 
 def upload_file(db: Session, user_id: int, file, folder: str = "user_uploads"):
@@ -54,7 +56,7 @@ def delete_file(db: Session, file_id: int, user_id: int):
         db.delete(db_file)
         db.commit()
 
-        return {"message": "File deleted successfully"}
+        return db_file
 
     except Exception as e:
         db.rollback()
@@ -68,3 +70,33 @@ def get_file_by_id(db: Session, file_id: int):
     query = db.query(UploadedFile).filter(UploadedFile.id == file_id)
 
     return query.first()
+
+
+def get_files_with_filters(
+    db: Session,
+    current_user: Dbuser,
+    user_id: Optional[int] = None,
+    filename_contains: Optional[str] = None,
+    uploaded_before: Optional[datetime] = None,
+    uploaded_after: Optional[datetime] = None,
+) -> List[UploadedFile]:
+    query = db.query(UploadedFile)
+
+    # For non-superusers, they can only see their own files
+    if not current_user.is_superuser:
+        query = query.filter(UploadedFile.user_id == current_user.id)
+    # Superusers can filter by specific user_id if provided
+    elif user_id is not None:
+        query = query.filter(UploadedFile.user_id == user_id)
+
+    # Filename contains filter (case insensitive)
+    if filename_contains:
+        query = query.filter(UploadedFile.file_name.ilike(f"%{filename_contains}%"))
+
+    # Date range filters
+    if uploaded_after:
+        query = query.filter(UploadedFile.upload_date >= uploaded_after)
+    if uploaded_before:
+        query = query.filter(UploadedFile.upload_date <= uploaded_before)
+
+    return query.all()

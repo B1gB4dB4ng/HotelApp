@@ -1,9 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
+from fastapi import APIRouter, Query, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from cloudinary_config import get_cloudinary
 from db import file_services
 from db.database import get_db
-from typing import List
+from typing import List, Optional
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/files", tags=["files"])
 cloudinary = get_cloudinary()
 
 
-@router.post("/upload", response_model=FileUploadOut)
+@router.post("/", response_model=FileUploadOut, status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -51,7 +51,7 @@ async def upload_file(
         )
 
 
-@router.delete("/{file_id}")
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file(
     file_id: int,
     db: Session = Depends(get_db),
@@ -86,15 +86,6 @@ async def delete_file(
         )
 
 
-@router.get("/", response_model=List[FileUploadOut])
-async def get_user_files(
-    file_id: int = None,
-    db: Session = Depends(get_db),
-    user: Dbuser = Depends(get_current_user),
-):
-    return db.query(UploadedFile).filter(UploadedFile.user_id == user.id).all()
-
-
 @router.get("/{file_id}", response_model=FileUploadOut)
 async def get_file_by_id(
     file_id: int,
@@ -103,9 +94,7 @@ async def get_file_by_id(
 ):
     db_file = file_services.get_file_by_id(db, file_id=file_id)
     if not (user.is_superuser or db_file.user_id == user.id):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this booking"
-        )
+        raise HTTPException(status_code=403, detail="Not authorized to view this file")
 
     if not db_file:
         raise HTTPException(
@@ -113,3 +102,30 @@ async def get_file_by_id(
             detail="File not found ",
         )
     return db_file
+
+
+@router.get("/", response_model=List[FileUploadOut])
+async def get_files(
+    user_id: Optional[int] = Query(None, description="Filter by user ID (admin only)"),
+    filename_contains: Optional[str] = Query(
+        None, description="Search for files containing this string in name"
+    ),
+    uploaded_before: Optional[datetime] = Query(
+        None, description="Filter files uploaded before this date (Format: YYYY-MM-DD)"
+    ),
+    uploaded_after: Optional[datetime] = Query(
+        None, description="Filter files uploaded after this date (Format: YYYY-MM-DD)"
+    ),
+    db: Session = Depends(get_db),
+    current_user: Dbuser = Depends(get_current_user),
+):
+    if not (current_user.is_superuser or user_id == current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to view this files")
+    return file_services.get_files_with_filters(
+        db=db,
+        current_user=current_user,
+        user_id=user_id,
+        filename_contains=filename_contains,
+        uploaded_before=uploaded_before,
+        uploaded_after=uploaded_after,
+    )

@@ -1,23 +1,17 @@
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 from db.database import Base
-from sqlalchemy import Column, Enum, Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Enum, Integer, String, Boolean, ForeignKey
+
 
 
 from sqlalchemy import (
     DECIMAL,
-    Column,
-    Enum,
-    Integer,
-    String,
-    Boolean,
-    ForeignKey,
+   
+
     Date,
     func,
 )
-from sqlalchemy.orm import relationship
-from enum import Enum as PyEnum
 from sqlalchemy import Enum as SqlEnum
 
 
@@ -177,3 +171,14 @@ class Dbreview(Base):
     user = relationship("Dbuser", back_populates="reviews")
     hotel = relationship("Dbhotel", back_populates="reviews")
     booking = relationship("Dbbooking", back_populates="review")  # Changed to singular
+
+
+class UploadedFile(Base):
+    __tablename__ = "uploaded_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    file_name = Column(String)
+    file_url = Column(String)
+    public_id = Column(String)  # Cloudinary public ID for deletion
+    upload_date = Column(DateTime(timezone=True), server_default=func.now())

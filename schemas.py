@@ -37,6 +37,11 @@ from datetime import date, datetime
 from calendar import monthrange
 
 
+class IsActivee(Enum):
+    inactive = "inactive"
+    active = "active"
+
+
 class IsActive(Enum):
     inactive = "inactive"
     active = "active"

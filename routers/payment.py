@@ -11,7 +11,7 @@ from datetime import date
 from db.db_payment import search_payments
 
 
-router = APIRouter(prefix="/payment", tags=["payment"])
+router = APIRouter(prefix="/payments", tags=["payment"])
 
 
 @router.post("/", response_model=PaymentShow, status_code=status.HTTP_201_CREATED)

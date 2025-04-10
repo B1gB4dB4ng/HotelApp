@@ -5,10 +5,17 @@ from auth.oauth2 import get_current_user
 from db.database import get_db
 from db import db_booking
 from db.models import Dbbooking, Dbhotel, Dbroom, Dbuser
-from schemas import BookingCreate, BookingShow, BookingStatus, BookingUpdate, IsActive
+from schemas import (
+    BookingCreate,
+    BookingShow,
+    BookingStatus,
+    BookingUpdate,
+    IsActive,
+    IsActivee,
+)
 
 
-router = APIRouter(prefix="/booking", tags=["Booking"])
+router = APIRouter(prefix="/bookings", tags=["Booking"])
 
 
 @router.post(
@@ -130,7 +137,7 @@ def delete_booking(
     return Response(status_code=STATUS.HTTP_204_NO_CONTENT)
 
 
-@router.put("/{booking_id}", response_model=BookingShow, summary="Update Booking")
+@router.patch("/{booking_id}", response_model=BookingShow, summary="Update Booking")
 def update_booking(
     booking_id: int,
     request: BookingUpdate,
@@ -213,9 +220,9 @@ def get_all_bookings_by_filter(
         gt=0,
         description="Filter by specific booking ID (must be positive integer)",
     ),
-    is_active: Optional[IsActive] = Query(
+    is_active: Optional[IsActivee] = Query(
         None,
-        description="Filter by active status. Non-admins cannot view deleted bookings.",
+        description="Filter by active status.",
     ),
     status: Optional[BookingStatus] = Query(
         None,

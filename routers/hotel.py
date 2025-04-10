@@ -10,7 +10,7 @@ from fastapi import Response
 from db.models import IsActive
 
 
-router = APIRouter(prefix="/hotel", tags=["Hotel"])
+router = APIRouter(prefix="/hotels", tags=["Hotel"])
 
 
 @router.post("/", response_model=HotelDisplay, status_code=201)
@@ -40,6 +40,7 @@ def get_hotel(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Hotel not found")
 
     return hotel
+
 
 # Combine search and filter logic into one endpoint
 @router.get("/", response_model=List[HotelDisplay])

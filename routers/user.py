@@ -45,21 +45,35 @@ def validate_phone(phone_number: str):
         )
 
 
-@router.post("/register")
+@router.post(
+    "/register", status_code=status.HTTP_201_CREATED, response_model=UserDisplay
+)
 def register_user(request: UserBase, db: Session = Depends(get_db)):
-    validate_username(request.username)
-    validate_password(request.password)
-    validate_phone(request.phone_number)
+    # Validate input fields
+    try:
+        validate_username(request.username)
+        validate_password(request.password)
+        validate_phone(request.phone_number)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    # Check for existing user conflicts
     if db_user.get_user_by_username(db, request.username):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username taken")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Username already taken"
+        )
     if db_user.get_user_by_email(db, request.email):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email taken")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
+        )
     if db_user.get_user_by_phone(db, request.phone_number):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone taken")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Phone number already in use"
+        )
 
+    # Create the user
     new_user = db_user.create_user(db, request)
-    return {"id": new_user.id, "username": new_user.username}
+    return UserDisplay.model_validate(new_user)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -88,7 +102,9 @@ async def update_user(
 
     # Prevent updates on soft-deleted accounts
     if target_user.status == IsActive.deleted:
-        raise HTTPException(status_code=400, detail="User account is deactivated or deleted")
+        raise HTTPException(
+            status_code=400, detail="User account is deactivated or deleted"
+        )
 
     # Permission check
     is_admin = current_user.is_superuser
@@ -112,11 +128,15 @@ async def update_user(
     if "is_superuser" in update_data and not is_admin:
         raise HTTPException(status_code=403, detail="Only admins can modify user roles")
     if "status" in update_data and not is_admin:
-        raise HTTPException(status_code=403, detail="Only admins can change user status")
+        raise HTTPException(
+            status_code=403, detail="Only admins can change user status"
+        )
 
     # Handle sensitive field changes
     SENSITIVE_FIELDS = ["password", "email", "username"]
-    is_updating_sensitive_field = any(field in update_data for field in SENSITIVE_FIELDS)
+    is_updating_sensitive_field = any(
+        field in update_data for field in SENSITIVE_FIELDS
+    )
 
     # Require current password for non-admins updating sensitive fields
     if not is_admin and is_updating_sensitive_field:
@@ -145,12 +165,15 @@ async def update_user(
     }
 
     if is_updating_sensitive_field:
-        response.update({
-            "access_token": create_access_token(updated_user),
-            "token_type": "bearer",
-        })
+        response.update(
+            {
+                "access_token": create_access_token(updated_user),
+                "token_type": "bearer",
+            }
+        )
 
     return response
+
 
 # Admin sees users' list
 @router.get("/", response_model=List[UserDisplay], summary="Admin search users")
@@ -195,20 +218,21 @@ def get_user_info(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
-    ):
+):
     user = db.query(Dbuser).filter(Dbuser.id == user_id).first()
 
     if not user or user.status == IsActive.deleted:
         raise HTTPException(status_code=404, detail="User not found")
 
     if current_user.id != user_id and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not authorized to access this user")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this user"
+        )
 
     return user
 
 
-
-#Admin deletes user
+# Admin deletes user
 @router.delete("/{user_id}", status_code=204, summary="Admin deletes a user")
 def delete_user_by_id(
     user_id: int,
@@ -226,4 +250,3 @@ def delete_user_by_id(
     db.commit()
 
     return Response(status_code=204)
-

@@ -86,9 +86,9 @@ def get_booking(
         or booking.user_id == user.id
         or db_booking.is_hotel_owner(db, booking.hotel_id, user.id)
     ):
-            raise HTTPException(
-                status_code=403, detail="Not authorized to view this booking"
-            )
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this booking"
+        )
 
     return booking
 
@@ -158,6 +158,10 @@ def update_booking(
     if "is_active" in request.dict(exclude_unset=True) and not user.is_superuser:
         raise HTTPException(
             status_code=403, detail="Not authorized to update the 'is_active' field"
+        )
+    if "status" in request.dict(exclude_unset=True) and not user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to update the 'status' field"
         )
 
     # Now that we've validated the authorization, call the function to update the booking

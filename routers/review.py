@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import Dbuser, Dbhotel, Dbbooking, Dbreview
 from schemas import (
-    ReviewBase,
     ReviewShow,
     ReviewUpdate,
     IsReviewStatus,
@@ -15,14 +14,10 @@ from typing import List, Optional
 from datetime import date
 from auth.oauth2 import get_current_user
 from db.db_review import update_avg_review_score
-from sqlalchemy import func
-from datetime import date
-from db.db_review import update_avg_review_score
 
 
-router = APIRouter(prefix="/review", tags=["Review"])
+router = APIRouter(prefix="/reviews", tags=["Review"])
 # -------------------------------------------------------------------------------------------------
-# submiting a review
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=ReviewShow)
@@ -224,8 +219,6 @@ def edit_review(
     db: Session = Depends(get_db),
     current_user: Dbuser = Depends(get_current_user),
 ):
-    
-    
     # Check if review exists
     review = db.query(Dbreview).filter(Dbreview.id == review_id).first()
     if not review:

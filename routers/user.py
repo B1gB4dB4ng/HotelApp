@@ -1,19 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from auth.oauth2 import create_access_token, get_current_user
 from db.database import get_db
-from schemas import TokenResponse, UserBase, UpdateUserResponse, UserDisplay, UserUpdate
+from schemas import UserBase, UpdateUserResponse, UserDisplay, UserUpdate
 from db import db_user
 from db.models import Dbuser
 import re
 from db.models import IsActive
 from typing import List, Optional
 from sqlalchemy import or_
-from fastapi import Query
 from fastapi import Response
 
-router = APIRouter(prefix="/user", tags=["user"])
+router = APIRouter(prefix="/users", tags=["user"])
 
 # Validation patterns
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{3,50}$"
@@ -45,9 +43,7 @@ def validate_phone(phone_number: str):
         )
 
 
-@router.post(
-    "/register", status_code=status.HTTP_201_CREATED, response_model=UserDisplay
-)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserDisplay)
 def register_user(request: UserBase, db: Session = Depends(get_db)):
     # Validate input fields
     try:
@@ -74,18 +70,6 @@ def register_user(request: UserBase, db: Session = Depends(get_db)):
     # Create the user
     new_user = db_user.create_user(db, request)
     return UserDisplay.model_validate(new_user)
-
-
-@router.post("/login", response_model=TokenResponse)
-def login(
-    request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
-):
-    user = db_user.get_user_by_username(db, request.username)
-    if not user or not db_user.verify_password(user, request.password):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
-
-    access_token = create_access_token(user)
-    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.patch("/{user_id}", response_model=UpdateUserResponse)
@@ -158,7 +142,7 @@ async def update_user(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Token regen if sensitive data changed
+    # Token  if sensitive data changed
     response = {
         "message": "User updated successfully",
         "user": UserDisplay.from_orm(updated_user),

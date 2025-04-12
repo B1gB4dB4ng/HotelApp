@@ -3,7 +3,6 @@ from datetime import date, timedelta, datetime
 import re
 from typing import Annotated, Literal, Optional, List
 from db.models import IsActive
-
 from pydantic import (
     BaseModel,
     condecimal,
@@ -11,13 +10,8 @@ from pydantic import (
     StringConstraints,
     Field,
     field_validator,
-    field_serializer,
-    field_validator,
-    condecimal,
-    Field,
 )
 from enum import Enum
-from datetime import date, datetime
 from calendar import monthrange
 
 
@@ -27,26 +21,9 @@ class IsActive(Enum):
     deleted = "deleted"
 
 
-class IsActive(Enum):
+class IsActivee(Enum):
     inactive = "inactive"
     active = "active"
-    deleted = "deleted"
-
-
-from datetime import date, datetime
-from calendar import monthrange
-
-
-class IsActive(Enum):
-    inactive = "inactive"
-    active = "active"
-    deleted = "deleted"
-
-
-class IsActive(Enum):
-    inactive = "inactive"
-    active = "active"
-    deleted = "deleted"
 
 
 class UserBase(BaseModel):

@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from db.models import Dbhotel, IsActive, Dbuser
 from schemas import HotelBase, HotelUpdate
-from sqlalchemy import or_
 from typing import Optional
 from fastapi import BackgroundTasks
 from email_utils import send_email
@@ -59,7 +58,6 @@ def combined_search_filter(
 ):
     query = db.query(Dbhotel).filter(Dbhotel.is_active != "deleted")
 
-
     if search_term:
         query = query.filter(Dbhotel.name.ilike(f"%{search_term}%"))
 
@@ -71,16 +69,14 @@ def combined_search_filter(
 
     if max_rating is not None:
         query = query.filter(Dbhotel.avg_review_score <= max_rating)
-    
+
     if is_approved is not None:
         query = query.filter(Dbhotel.is_approved == is_approved)
 
     if owner_id is not None:
         query = query.filter(Dbhotel.owner_id == owner_id)
-    
 
     return query.offset(skip).limit(limit).all()
-
 
 
 def get_all_hotels(db: Session):
@@ -91,13 +87,19 @@ def get_hotel(db: Session, id: int):
     return db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
 
-def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: BackgroundTasks, current_user: Dbuser):
+def update_hotel(
+    db: Session,
+    id: int,
+    request: HotelUpdate,
+    background_tasks: BackgroundTasks,
+    current_user: Dbuser,
+):
     hotel = db.query(Dbhotel).filter(Dbhotel.id == id).first()
 
     if not hotel:
         return None
-    
-    #Take the status before changing
+
+    # Take the status before changing
     previous_is_approved = hotel.is_approved
 
     update_data = request.dict(exclude_unset=True)
@@ -108,9 +110,12 @@ def update_hotel(db: Session, id: int, request: HotelUpdate, background_tasks: B
     db.commit()
     db.refresh(hotel)
 
-
-# Check for changing approval status
-    if current_user.is_superuser and "is_approved" in update_data and previous_is_approved != hotel.is_approved:
+    # Check for changing approval status
+    if (
+        current_user.is_superuser
+        and "is_approved" in update_data
+        and previous_is_approved != hotel.is_approved
+    ):
         owner = db.query(Dbuser).filter(Dbuser.id == hotel.owner_id).first()
 
         if hotel.is_approved:

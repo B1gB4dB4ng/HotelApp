@@ -1,26 +1,29 @@
 from sqlalchemy.orm import Session
-from db.models import Dbroom, IsActive, Dbbooking, Dbhotel, IsRoomStatus    
-from schemas import RoomBase, RoomUpdate, RoomCreate
-from sqlalchemy import or_, and_, not_
+from db.models import Dbroom, IsActive, Dbbooking, Dbhotel, IsRoomStatus
+from schemas import RoomUpdate, RoomCreate
+from sqlalchemy import or_
 from decimal import Decimal
-from typing import Optional, List, Tuple
-from fastapi import HTTPException, status
-from datetime import date 
-from sqlalchemy.orm import joinedload
+from typing import Optional, List
+from fastapi import HTTPException
+from datetime import date
 from db.models import Dbuser
+
 
 # Create a Room
 def create_room(db: Session, request: RoomCreate) -> Dbroom:
-    existing_room = db.query(Dbroom).filter(
-        Dbroom.room_number == request.room_number,
-        Dbroom.hotel_id == request.hotel_id,
-        Dbroom.is_active != "deleted"
-    ).first()
-    
+    existing_room = (
+        db.query(Dbroom)
+        .filter(
+            Dbroom.room_number == request.room_number,
+            Dbroom.hotel_id == request.hotel_id,
+            Dbroom.is_active != "deleted",
+        )
+        .first()
+    )
+
     if existing_room:
         raise HTTPException(
-            status_code=400,
-            detail="Room number already exists in this hotel"
+            status_code=400, detail="Room number already exists in this hotel"
         )
 
     try:
@@ -31,29 +34,34 @@ def create_room(db: Session, request: RoomCreate) -> Dbroom:
         return new_room
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to create room: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to create room: {str(e)}")
+
 
 # Search by a Room Number and a Hotel id
 def get_room_by_number(db: Session, room_num: int, hotel_id: int):
-    return db.query(Dbroom).filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id).first()
+    return (
+        db.query(Dbroom)
+        .filter(Dbroom.room_number == room_num, Dbroom.hotel_id == hotel_id)
+        .first()
+    )
+
 
 # Delete a Room
 def delete_room(db: Session, room_id: int):
-    room = db.query(Dbroom).filter(
-        Dbroom.id == room_id,
-        Dbroom.is_active == IsActive.active
-    ).first()
+    room = (
+        db.query(Dbroom)
+        .filter(Dbroom.id == room_id, Dbroom.is_active == IsActive.active)
+        .first()
+    )
 
     if not room:
         return None
 
     room.is_active = IsActive.deleted
-    room.status = IsRoomStatus.unavailable  
+    room.status = IsRoomStatus.unavailable
     db.commit()
     return room
+
 
 # Update a Room
 def update_room(db: Session, room_id: int, request: RoomUpdate):
@@ -66,6 +74,7 @@ def update_room(db: Session, room_id: int, request: RoomUpdate):
     db.refresh(room)
     return room
 
+
 #############
 def get_room(db: Session, room_id: int):
     return (
@@ -76,10 +85,11 @@ def get_room(db: Session, room_id: int):
             Dbroom.id == room_id,
             Dbroom.is_active != IsActive.deleted,
             Dbhotel.is_active != IsActive.deleted,
-            Dbuser.status != IsActive.deleted  # Exclude deleted hotel owners
+            Dbuser.status != IsActive.deleted,  # Exclude deleted hotel owners
         )
         .first()
     )
+
 
 def get_rooms_by_hotel(
     db: Session,
@@ -90,14 +100,14 @@ def get_rooms_by_hotel(
 ):
     query = db.query(Dbroom).filter(
         Dbroom.hotel_id == hotel_id,
-        Dbroom.is_active != IsActive.deleted  # ✅ include active/inactive, exclude deleted
+        Dbroom.is_active
+        != IsActive.deleted,  # ✅ include active/inactive, exclude deleted
     )
 
     if status:
         query = query.filter(Dbroom.status == status)
 
     return query.offset(skip).limit(limit).all()
-
 
 
 # Search a Room Using Different Filters
@@ -121,7 +131,7 @@ def advanced_room_search(
         .filter(
             Dbroom.is_active != IsActive.deleted,
             Dbhotel.is_active != IsActive.deleted,
-            Dbuser.status != IsActive.deleted  # ⛔ Exclude deleted owners
+            Dbuser.status != IsActive.deleted,  # ⛔ Exclude deleted owners
         )
     )
 
